@@ -2,10 +2,17 @@
 import { ConnectModal, useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit';
 import { Button } from "@/components/ui/button";
 import { Wallet, LogOut } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 export function Navbar() {
   const currentAccount = useCurrentAccount();
   const { mutate: disconnect } = useDisconnectWallet();
+  const pathname = usePathname();
+  
+  // Don't render navbar on the login page
+  if (pathname === '/login') {
+    return null;
+  }
 
   return (
     <nav className="border-b">
@@ -19,7 +26,7 @@ export function Navbar() {
             <Button
               variant="outline"
               onClick={() => disconnect()}
-              className="flex items-center gap-2"
+              className="rounded-full flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
               Disconnect
@@ -27,7 +34,7 @@ export function Navbar() {
           ) : (
             <ConnectModal
               trigger={
-                <Button variant="outline" className="flex items-center gap-2">
+                <Button variant="outline" className="rounded-full flex items-center gap-2">
                   <Wallet className="h-4 w-4" />
                   Connect
                 </Button>
