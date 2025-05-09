@@ -3,6 +3,7 @@ import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./styles.css";
 import { Navbar } from "@/components/Navbar";
 
 const geistSans = Geist({
@@ -28,12 +29,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} app-gradient-bg antialiased min-h-screen`}
       >
       <Providers>
-        <Navbar />
-        {children}
-        <Toaster richColors/>
+        <div className="half-round-glow"></div>
+        <div className="relative z-10">
+          <Navbar />
+          {children}
+          <Toaster richColors/>
+        </div>
       </Providers>
       </body>
     </html>

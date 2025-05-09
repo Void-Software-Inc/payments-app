@@ -1,8 +1,9 @@
 "use client"
 import { ConnectModal, useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit';
 import { Button } from "@/components/ui/button";
-import { Wallet, LogOut } from 'lucide-react';
+import { Wallet, LogOut, User, Home } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 
 export function Navbar() {
   const currentAccount = useCurrentAccount();
@@ -14,14 +15,42 @@ export function Navbar() {
     return null;
   }
 
+  const isHomePage = pathname === '/home' || pathname === '/';
+
   return (
-    <nav className="border-b">
-      <div className="flex h-16 items-center px-4 container mx-auto justify-between">
+    <nav className="border-none">
+      <div className="flex h-16 items-center px-4 container mx-auto justify-between bg-transparent">
         <div className="flex items-center gap-4">
-          {/* Add your logo or other navbar items here */}
+          {!isHomePage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              asChild
+            >
+              <Link href="/home">
+                <Home className="h-5 w-5" />
+                <span className="sr-only">Home</span>
+              </Link>
+            </Button>
+          )}
         </div>
         
-        <div>
+        <div className="flex items-center gap-3">
+          {currentAccount?.address && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full"
+              asChild
+            >
+              <Link href="#">
+                <User className="h-5 w-5" />
+                <span className="sr-only">My Profile</span>
+              </Link>
+            </Button>
+          )}
+
           {currentAccount?.address ? (
             <Button
               variant="outline"

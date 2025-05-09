@@ -1,0 +1,49 @@
+.app-gradient-bg {
+  background-color: #23242A;
+  background-image: 
+    linear-gradient(to bottom, rgba(76, 120, 141, 0.95) 0%, rgba(76, 120, 141, 0) 35%, #23242A 100%);
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grid pattern layer */
+.app-gradient-bg::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 35%;
+  background-image: url('/grid.svg');
+  background-repeat: repeat;
+  background-size: 70px 70px;
+  opacity: 0.5;
+  z-index: 0;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+
+/* Half-round glow at the top */
+.half-round-glow {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 200px;
+  background: #4C788D;
+  border-bottom-left-radius: 50%;
+  border-bottom-right-radius: 50%;
+  opacity: 1;
+  filter: blur(30px);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.login-bg {
+  background-color: #1F2025;
+} 

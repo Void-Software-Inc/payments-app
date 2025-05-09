@@ -19,7 +19,7 @@ export default function LoginPage() {
   }, [currentAccount, router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#1A1C1E]">
+    <div className="min-h-screen flex flex-col items-center justify-center">
       <div className="flex flex-col items-center gap-30">
         <div className="flex items-center gap-2 mb-4">
           <Image 
