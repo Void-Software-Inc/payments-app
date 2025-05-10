@@ -1,7 +1,7 @@
 "use client"
 import { ConnectModal, useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit';
 import { Button } from "@/components/ui/button";
-import { Wallet, LogOut, User, Home } from 'lucide-react';
+import { Wallet, LogOut, User, Home, Store } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -23,7 +23,7 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {!isHomePage && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               className="rounded-full"
               asChild
@@ -38,17 +38,30 @@ export function Navbar() {
         
         <div className="flex items-center gap-3">
           {currentAccount?.address && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full"
-              asChild
-            >
-              <Link href="#">
-                <User className="h-5 w-5" />
-                <span className="sr-only">My Profile</span>
-              </Link>
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+                asChild
+              >
+                <Link href="/merchant">
+                  <Store className="h-5 w-5" />
+                  <span className="sr-only">Merchant</span>
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+                asChild
+              >
+                <Link href="#">
+                  <User className="h-5 w-5" />
+                  <span className="sr-only">My Profile</span>
+                </Link>
+              </Button>
+            </>
           )}
 
           {currentAccount?.address ? (
