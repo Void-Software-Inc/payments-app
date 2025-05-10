@@ -4,8 +4,11 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePaymentStore } from "@/store/usePaymentStore"
+import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { PlusCircle } from "lucide-react"
+import Link from "next/link"
+import { useRouter, usePathname } from "next/navigation"
 
 interface PaymentAccount {
   id: string
@@ -17,8 +20,10 @@ export function PaymentAccountsList() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  const { getOrInitClient } = usePaymentStore()
+  const { getOrInitClient, refreshTrigger } = usePaymentStore()
+  const { getUserPaymentAccounts } = usePaymentClient()
   const currentAccount = useCurrentAccount()
+  const pathname = usePathname()
   
   useEffect(() => {
     const fetchPaymentAccounts = async () => {
@@ -36,7 +41,10 @@ export function PaymentAccountsList() {
           return
         }
         
-        const accounts = client.getUserPaymentAccounts()
+        // Get payment accounts without calling refresh directly
+        // The refresh is handled internally by the client when needed
+        const accounts = await getUserPaymentAccounts(currentAccount.address)
+        console.log("Fetched payment accounts:", accounts)
         setPaymentAccounts(accounts)
       } catch (err) {
         console.error("Error fetching payment accounts:", err)
@@ -47,7 +55,7 @@ export function PaymentAccountsList() {
     }
     
     fetchPaymentAccounts()
-  }, [currentAccount?.address, getOrInitClient])
+  }, [currentAccount?.address, getOrInitClient, refreshTrigger, pathname])
   
   if (isLoading) {
     return (
@@ -83,13 +91,15 @@ export function PaymentAccountsList() {
   function renderCreateButton() {
     return (
       <div className="mt-8 flex justify-center">
-        <Button 
-          className="h-12 w-[220px] rounded-full flex items-center gap-2 font-medium hover:bg-[#78BCDB]/10" 
-          style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
-        >
-          <PlusCircle className="h-4 w-4" />
-          Create Payment Account
-        </Button>
+        <Link href="/merchant/create">
+          <Button 
+            className="h-12 w-[220px] rounded-full flex items-center gap-2 font-medium hover:bg-[#78BCDB]/10" 
+            style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
+          >
+            <PlusCircle className="h-4 w-4" />
+            Create Payment Account
+          </Button>
+        </Link>
       </div>
     )
   }
@@ -102,17 +112,16 @@ export function PaymentAccountsList() {
         ) : (
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {paymentAccounts.map((account) => (
-              <Card key={account.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <CardTitle>{account.name}</CardTitle>
-                  <CardDescription className="truncate">ID: {account.id}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full" size="sm">
-                    View Details
-                  </Button>
-                </CardContent>
-              </Card>
+              <Link href={`/merchant/${account.id}`} key={account.id} className="block transition-transform hover:scale-[1.02]">
+                <Card className="overflow-hidden h-full cursor-pointer hover:border-[#78BCDB]">
+                  <CardHeader className="pb-2">
+                    <CardTitle>{account.name}</CardTitle>
+                    <CardDescription className="truncate">ID: {account.id}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )}

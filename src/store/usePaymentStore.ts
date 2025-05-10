@@ -49,7 +49,7 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         })
         return newClient
       } catch (error) {
-        console.error("Error initializing DaoClient:", error)
+        console.error("Error initializing PaymentClient:", error)
         throw error
       }
     }
