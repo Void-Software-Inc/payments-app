@@ -33,6 +33,16 @@ export function usePaymentClient() {
     }
   };
 
+  const getUser = async (userAddr: string) => {
+    try {
+      const client = await getOrInitClient(userAddr);
+      return client.user
+    } catch (error) {
+      console.error("Error getting user profile:", error);
+      throw error;
+    }
+  };
+
   return {
     initPaymentClient,
     refresh,
