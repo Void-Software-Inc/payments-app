@@ -7,6 +7,7 @@ import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { useTokenPrice } from "@/hooks/useTokenPrice";
 import { formatSuiBalance, formatUsdBalance } from "@/utils/formatters";
+import Link from "next/link";
 
 // SUI coin type for SUI token
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -108,13 +109,14 @@ export function BalanceCard({
                 <span className="text-sm text-white">Deposit</span>
               </button>
               
-              <button 
+              <Link 
+                href="/withdraw" 
                 className="flex flex-col items-center justify-center py-4 rounded-lg border border-gray-700 hover:bg-gray-800 transition"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Upload className="h-6 w-6 mb-2 text-white" />
                 <span className="text-sm text-white">Withdraw</span>
-              </button>
+              </Link>
               
               <button 
                 className="flex flex-col items-center justify-center py-4 rounded-lg border border-gray-700 hover:bg-gray-800 transition"
