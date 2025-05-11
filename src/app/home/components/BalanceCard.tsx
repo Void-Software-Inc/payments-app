@@ -50,7 +50,7 @@ export function BalanceCard() {
 
   return (
     <Card className="bg-[#2A2A2F] border-none shadow-lg w-full max-w-xl mx-auto">
-      <CardContent className="pt-6">
+      <CardContent>
         <div className="space-y-6">
           {/* Balance Header */}
           <div className="flex justify-between items-center">

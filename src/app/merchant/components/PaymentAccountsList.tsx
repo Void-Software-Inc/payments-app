@@ -9,6 +9,7 @@ import { useCurrentAccount } from "@mysten/dapp-kit"
 import { PlusCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
+import { truncateMiddle } from "@/utils/formatters"
 
 interface PaymentAccount {
   id: string
@@ -116,7 +117,7 @@ export function PaymentAccountsList() {
                 <Card className="overflow-hidden h-full cursor-pointer hover:border-[#78BCDB]">
                   <CardHeader className="pb-2">
                     <CardTitle>{account.name}</CardTitle>
-                    <CardDescription className="truncate">ID: {account.id}</CardDescription>
+                    <CardDescription>ID: {truncateMiddle(account.id)}</CardDescription>
                   </CardHeader>
                   <CardContent>
                   </CardContent>

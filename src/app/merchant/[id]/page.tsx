@@ -8,6 +8,8 @@ import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { Toaster } from "sonner"
 import { usePaymentStore } from "@/store/usePaymentStore"
+import { BalanceCard } from "@/components/BalanceCard"
+import { truncateMiddle } from "@/utils/formatters"
 
 export default function PaymentAccountPage() {
   const params = useParams()
@@ -38,7 +40,7 @@ export default function PaymentAccountPage() {
     };
 
     initPaymentClient();
-  }, [currentAccount?.address, accountId, getOrInitClient]);
+  }, [currentAccount?.address, accountId, getOrInitClient, getPaymentAccount]);
 
   // Get account name from metadata
   const accountName = paymentAcc?.metadata?.find(item => item.key === "name")?.value || "Unnamed Account";
@@ -76,20 +78,23 @@ export default function PaymentAccountPage() {
         <Toaster position="bottom-center" richColors closeButton />
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">{accountName}</h1>
-          <p className="text-muted-foreground text-sm truncate">ID: {accountId}</p>
+          <p className="text-zinc-200 ml-1 text-sm">ID: {truncateMiddle(accountId)}</p>
         </div>
         
-        {/* Payment account details can be added here */}
+        {/* Balance Card */}
+        <div className="mb-6">
+          <BalanceCard 
+            title="Account Balance" 
+            accountId={accountId}
+            customBalance={BigInt(0)} // Replace with actual balance when available
+          />
+        </div>
+        
+        {/* Account Details */}
         <div className="bg-card p-6 rounded-lg shadow-lg">
           <h2 className="text-xl mb-4">Account Details</h2>
           
-          {/* Placeholder for account details */}
           <div className="grid gap-4">
-            <div>
-              <h3 className="text-sm font-medium">Balance</h3>
-              <p>Not implemented yet</p>
-            </div>
-            
             <div>
               <h3 className="text-sm font-medium">Actions</h3>
               <div className="grid grid-cols-2 gap-2 mt-2">
