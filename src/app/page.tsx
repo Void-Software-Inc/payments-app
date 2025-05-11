@@ -25,9 +25,6 @@ export default function Home() {
     <main className="container mx-auto px-4 pt-10">
       <div className="max-w-2xl mx-auto space-y-8 mt-10">
 
-        {/* Wallet Info Card */}
-        <WalletInfoCard />
-
         {/* Balance Card */}
         <BalanceCard />
         

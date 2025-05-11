@@ -14,6 +14,8 @@ import { toast } from "sonner"
 
 export function CreatePaymentForm() {
   const [name, setName] = useState("")
+  const [username, setUsername] = useState("")
+  const [profilePicture, setProfilePicture] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -47,16 +49,25 @@ export function CreatePaymentForm() {
         throw new Error("Client not initialized")
       }
       
+      // Set username to the trimmed input value, or use wallet address as fallback
+      const userUsername = username.trim() || undefined
+      
+      // Use the provided profile picture URL if available
+      const userProfilePicture = profilePicture.trim() || undefined
+      
       // Check if user has an ID, if empty provide username and profile picture
       const newUserParams = !client.user?.id 
-        ? { username: currentAccount.address, profilePicture: "" }
+        ? { 
+            username: userUsername || currentAccount.address, 
+            profilePicture: userProfilePicture || "" 
+          }
         : undefined;
 
      // Create a new transaction block
       const tx = new Transaction();
         
       // Call createPaymentAccount
-      createPaymentAccount(currentAccount.address ,tx, name, newUserParams)
+      createPaymentAccount(currentAccount.address, tx, name, newUserParams)
       
       // Execute the transaction using the Tx utility
       const txResult = await signAndExecute({
@@ -101,6 +112,29 @@ export function CreatePaymentForm() {
             onChange={(e) => setName(e.target.value)}
             className="h-12"
             required
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="username" className="text-white">Username (Optional)</Label>
+          <Input
+            id="username"
+            placeholder="Enter username or leave empty for default"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="h-12"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="profilePicture" className="text-white">Profile Picture URL (Optional)</Label>
+          <Input
+            id="profilePicture"
+            placeholder="Enter URL to profile picture"
+            value={profilePicture}
+            onChange={(e) => setProfilePicture(e.target.value)}
+            className="h-12"
+            disabled
           />
         </div>
         

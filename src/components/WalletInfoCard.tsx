@@ -12,7 +12,11 @@ interface UserProfile {
   username?: string | null;
 }
 
-export function WalletInfoCard() {
+interface WalletInfoCardProps {
+  merchantId?: string;
+}
+
+export function WalletInfoCard({ merchantId }: WalletInfoCardProps) {
   const currentAccount = useCurrentAccount();
   const router = useRouter();
   const { getUserProfile } = usePaymentClient();
@@ -49,9 +53,17 @@ export function WalletInfoCard() {
 
   if (!currentAccount?.address) return null;
 
+  const handleProfileClick = () => {
+    if (merchantId) {
+      router.push(`/merchant/${merchantId}/profile`);
+    } else {
+      router.push('/profile');
+    }
+  };
+
   return (
     <div 
-      onClick={() => router.push('/profile')}
+      onClick={handleProfileClick}
       className="p-5 rounded-lg border border-gray-700 bg-[#2A2A2F] shadow-lg cursor-pointer hover:bg-[#33333A] transition-colors"
     >
       <div className="flex justify-between items-center">
