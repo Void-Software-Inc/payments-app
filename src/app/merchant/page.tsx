@@ -18,11 +18,25 @@ export default function MerchantPage() {
     }
   }, [currentAccount?.address, triggerRefresh])
   
+  // Apply a custom CSS class to the body when this page is mounted
+  useEffect(() => {
+    // Save the original overflow value
+    const originalOverflow = document.body.style.overflow;
+    
+    // Enable scrolling on the body
+    document.body.style.overflow = 'auto';
+    
+    // Clean up when the component unmounts
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+  
   return (
-    <div className="container mx-auto px-4 py-6">
+    <main className="container mx-auto px-4 pt-20 pb-8 max-w-2xl">
       <Toaster position="bottom-center" richColors closeButton />
       <MerchantHeader />
       <PaymentAccountsList />
-    </div>
+    </main>
   )
 } 

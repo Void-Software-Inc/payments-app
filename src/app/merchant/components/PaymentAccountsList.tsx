@@ -90,7 +90,7 @@ export function PaymentAccountsList() {
   
   function renderCreateButton() {
     return (
-      <div className="mt-8 flex justify-center">
+      <div className="mt-8 mb-20 flex justify-center">
         <Link href="/merchant/create">
           <Button 
             className="h-12 w-[220px] rounded-full flex items-center gap-2 font-medium hover:bg-[#78BCDB]/10" 

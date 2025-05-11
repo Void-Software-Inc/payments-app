@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Payment } from "@account.tech/payment";
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 import { Toaster } from "sonner"
 import { usePaymentStore } from "@/store/usePaymentStore"
 
@@ -47,56 +45,57 @@ export default function PaymentAccountPage() {
   
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-center p-8">Loading payment account...</div>
+      <div className="w-full pt-20">
+        <div className="container mx-auto px-4 py-0 max-w-2xl">
+          <div className="flex justify-center p-8">Loading payment account...</div>
+        </div>
       </div>
     )
   }
   
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="text-red-500 p-4">{error}</div>
-        <Button 
-          variant="outline" 
-          className="mt-4"
-          onClick={() => router.push("/merchant")}
-        >
-          Back to Payment Accounts
-        </Button>
+      <div className="w-full pt-20">
+        <div className="container mx-auto px-4 py-0 max-w-2xl">
+          <div className="text-red-500 p-4">{error}</div>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => router.push("/merchant")}
+          >
+            Back to Payment Accounts
+          </Button>
+        </div>
       </div>
     )
   }
   
   return (
-    <div className="container mx-auto px-4 py-6">
-      <Toaster position="bottom-center" richColors closeButton />
-      <div className="mb-6">
-        <Link href="/merchant">
-          <Button variant="ghost" className="rounded-full p-2 mb-4">
-            <ArrowLeft className="h-5 w-5 text-white" />
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold text-white">{accountName}</h1>
-        <p className="text-muted-foreground text-sm">ID: {accountId}</p>
-      </div>
-      
-      {/* Payment account details can be added here */}
-      <div className="bg-card p-6 rounded-lg shadow-lg">
-        <h2 className="text-xl mb-4">Account Details</h2>
+    <div className="w-full pt-20">
+      <div className="container mx-auto px-4 py-0 max-w-2xl">
+        <Toaster position="bottom-center" richColors closeButton />
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-white">{accountName}</h1>
+          <p className="text-muted-foreground text-sm truncate">ID: {accountId}</p>
+        </div>
         
-        {/* Placeholder for account details */}
-        <div className="grid gap-4">
-          <div>
-            <h3 className="text-sm font-medium">Balance</h3>
-            <p>Not implemented yet</p>
-          </div>
+        {/* Payment account details can be added here */}
+        <div className="bg-card p-6 rounded-lg shadow-lg">
+          <h2 className="text-xl mb-4">Account Details</h2>
           
-          <div>
-            <h3 className="text-sm font-medium">Actions</h3>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <Button variant="outline" size="sm">Deposit</Button>
-              <Button variant="outline" size="sm">Withdraw</Button>
+          {/* Placeholder for account details */}
+          <div className="grid gap-4">
+            <div>
+              <h3 className="text-sm font-medium">Balance</h3>
+              <p>Not implemented yet</p>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-medium">Actions</h3>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <Button variant="outline" size="sm">Deposit</Button>
+                <Button variant="outline" size="sm">Withdraw</Button>
+              </div>
             </div>
           </div>
         </div>

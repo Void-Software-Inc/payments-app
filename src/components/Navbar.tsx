@@ -1,7 +1,7 @@
 "use client"
 import { ConnectModal, useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit';
 import { Button } from "@/components/ui/button";
-import { Wallet, LogOut, User, Home, Store } from 'lucide-react';
+import { Wallet, LogOut, User, Home, Store, ArrowLeft } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -16,10 +16,11 @@ export function Navbar() {
   }
 
   const isHomePage = pathname === '/home' || pathname === '/';
+  const isMerchantAccountPage = pathname.startsWith('/merchant/') && pathname !== '/merchant/create';
 
   return (
-    <nav className="border-none">
-      <div className="flex h-16 items-center px-4 container mx-auto justify-between bg-transparent">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent" style={{ background: 'transparent' }}>
+      <div className="flex h-16 items-center px-4 container mx-auto justify-between bg-transparent" style={{ background: 'transparent', boxShadow: 'none' }}>
         <div className="flex items-center gap-4">
           {!isHomePage && (
             <Button
@@ -31,6 +32,19 @@ export function Navbar() {
               <Link href="/home">
                 <Home className="h-5 w-5" />
                 <span className="sr-only">Home</span>
+              </Link>
+            </Button>
+          )}
+          {isMerchantAccountPage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full text-white"
+              asChild
+            >
+              <Link href="/merchant">
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Back to Merchant</span>
               </Link>
             </Button>
           )}
