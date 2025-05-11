@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getTokenPrices } from '../utils/aftermath';
 
 type TokenId = 'sui';
 
@@ -8,8 +9,8 @@ interface UseTokenPriceOptions {
 }
 
 /**
- * Hook to fetch real-time token prices from CoinGecko API
- * @param tokenId - The token ID in CoinGecko (e.g., 'sui', 'bitcoin')
+ * Hook to fetch real-time token prices from Aftermath API
+ * @param tokenId - The token ID (e.g., 'sui')
  * @param options - Options for customizing the price fetching behavior
  * @returns Object containing price, loading state, and error information
  */
@@ -19,7 +20,6 @@ export function useTokenPrice(
 ) {
   const { 
     refreshInterval = 60000, // Default to refresh every minute
-    currency = 'usd' 
   } = options;
   
   const [price, setPrice] = useState<number | null>(null);
@@ -30,23 +30,32 @@ export function useTokenPrice(
     const fetchPrice = async () => {
       try {
         setLoading(true);
-        // CoinGecko free API for price data
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${tokenId}&vs_currencies=${currency}`
-        );
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch price: ${response.status}`);
+        // Map tokenId to the appropriate Aftermath coin type
+        let coinType = '';
+        if (tokenId === 'sui') {
+          coinType = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
         }
         
-        const data = await response.json();
-        setPrice(data[tokenId][currency]);
+        const priceData = await getTokenPrices([coinType]);
+        
+        if (!priceData || !priceData[coinType]) {
+          throw new Error(`Failed to fetch price for ${tokenId}`);
+        }
+        
+        // Handle -1 price which means token not found
+        if (priceData[coinType].price === -1) {
+          setPrice(0);
+        } else {
+          setPrice(priceData[coinType].price);
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Error fetching token price:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
         // Fallback price if API fails
-        if (price === null) setPrice(1.00);
+        if (price === null) setPrice(0);
       } finally {
         setLoading(false);
       }
@@ -60,7 +69,7 @@ export function useTokenPrice(
     
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
-  }, [tokenId, currency, refreshInterval, price]);
+  }, [tokenId, refreshInterval, price]);
 
   return { price, loading, error };
 } 

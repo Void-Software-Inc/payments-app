@@ -43,7 +43,7 @@ export default function ProfilePage() {
       </div>
       
       <div className="py-4">
-        <div className="mb-6 rounded-lg bg-gray-800 p-4">
+        <div className="mb-6 rounded-lg bg-[#2A2A2F] p-4">
           <p className="text-sm text-gray-400 mb-1">Wallet Address</p>
           <div className="flex items-center justify-between">
             <p className="text-white font-mono text-sm">
