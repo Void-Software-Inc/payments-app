@@ -15,7 +15,7 @@ export function Navbar() {
     return null;
   }
 
-  const isHomePage = pathname === '/home' || pathname === '/';
+  const isHomePage = pathname === '/';
   const isMerchantAccountPage = pathname.startsWith('/merchant/') && pathname !== '/merchant/create';
 
   return (
@@ -29,7 +29,7 @@ export function Navbar() {
               className="rounded-full"
               asChild
             >
-              <Link href="/home">
+              <Link href="/">
                 <Home className="h-5 w-5" />
                 <span className="sr-only">Home</span>
               </Link>
