@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,6 +25,23 @@ export function CreatePaymentForm() {
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   const router = useRouter()
+  
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      // Reset any lingering client state when component unmounts
+      if (!isCreating) {
+        resetClient()
+      }
+    }
+  }, [isCreating, resetClient])
+  
+  const handleCancel = () => {
+    // Clean up state to prevent errors
+    resetClient()
+    // Navigate back to merchant page
+    router.push("/merchant")
+  }
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -93,7 +110,6 @@ export function CreatePaymentForm() {
     } catch (err) {
       console.error("Error creating payment account:", err)
       setError("Failed to create payment account");
-      console.error("Error creating payment account:", err);
       toast.error(err instanceof Error ? err.message : "Failed to create payment account");
     } finally {
       setIsCreating(false)
