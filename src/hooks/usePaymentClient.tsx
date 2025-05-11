@@ -3,6 +3,13 @@ import { PaymentClient, Payment } from "@account.tech/payment";
 import { Transaction, TransactionResult } from "@mysten/sui/transactions";
 import { usePaymentStore } from "@/store/usePaymentStore";
 
+// Define a Profile interface to match what's expected by components
+interface Profile {
+  avatar?: string | null;
+  username?: string;
+  [key: string]: any;
+}
+
 export function usePaymentClient() {
   const { getOrInitClient, resetClient } = usePaymentStore();
 
@@ -64,8 +71,26 @@ export function usePaymentClient() {
       const client = await getOrInitClient(userAddr);
       return client.user
     } catch (error) {
+      console.error("Error getting user:", error);
+      return null; // Return null instead of throwing
+    }
+  };
+
+  const getUserProfile = async (userAddr: string): Promise<Profile> => {
+    try {
+      const client = await getOrInitClient(userAddr);
+      // Check if getUserProfile exists on the client
+      if (typeof client.getUserProfile !== 'function') {
+        console.warn('getUserProfile is not available on the client', client);
+        // Return a default object if the method doesn't exist
+        return { username: 'User', avatar: null };
+      }
+      const profile = await client.getUserProfile();
+      return profile as Profile;
+    } catch (error) {
       console.error("Error getting user profile:", error);
-      throw error;
+      // Return a fallback object instead of throwing
+      return { username: 'User', avatar: null };
     }
   };
 
@@ -85,7 +110,7 @@ export function usePaymentClient() {
       return client.getUserPaymentAccounts();
     } catch (error) {
       console.error("Error getting user payment accounts:", error);
-      throw error;
+      return []; // Return empty array instead of throwing
     }
   };
 
@@ -95,6 +120,7 @@ export function usePaymentClient() {
     switchAccount,
     createPaymentAccount,
     getUser,
+    getUserProfile,
     getPaymentAccount,
     getUserPaymentAccounts,
   };
