@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 export function HeaderNav() {
   return (
-    <div className="flex items-center mb-4">
+    <div className="w-full h-fit flex justify-center pt-5">
+        <h1 className="text-2xl font-bold text-white">Withdraw</h1>
     </div>
   );
 } 

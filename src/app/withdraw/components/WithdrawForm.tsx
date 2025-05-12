@@ -16,6 +16,7 @@ import { signAndExecute, handleTxResult } from "@/utils/Tx";
 import { formatSuiBalance } from "@/utils/formatters";
 import { getCoinDecimals } from "@/utils/helpers";
 import { useRouter } from "next/navigation";
+import { Upload } from "lucide-react";
 
 // USDC coin type - ensure this matches the BalanceCard.tsx definition
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC";
@@ -104,9 +105,7 @@ export function WithdrawForm() {
     });
   };
   
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
+  const withdraw = async () => {
     if (!currentAccount?.address) {
       setError("Please connect your wallet");
       return;
@@ -230,76 +229,67 @@ export function WithdrawForm() {
   const formattedUsdcBalance = formatUsdcBalance(balanceInUsdc, usdcDecimals);
   
   return (
-    <Card className="bg-[#2A2A2F] border-none shadow-lg">
-      <CardHeader>
-        <CardTitle className="text-white text-2xl">Withdraw USDC</CardTitle>
-        <CardDescription className="text-gray-400">
-          Transfer USDC tokens to another wallet address
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="recipient" className="text-white">Recipient Address</Label>
-            <Input
-              id="recipient"
-              placeholder="0x..."
-              value={recipient}
-              onChange={handleRecipientChange}
-              className="h-12 bg-[#2A2A2F] border-gray-700"
-              required
-            />
+    <div className="flex flex-col h-full justify-between">
+      <div className="space-y-6">
+        <div className="relative mb-20">
+          <div className="absolute text-sm left-5 top-4 font-medium text-white/70 pointer-events-none">
+            Recipient Address
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="text-white">
-              Amount (USDC)
-              <span className="text-sm ml-2 text-gray-400">
-                Available: {formattedUsdcBalance} USDC
-              </span>
-            </Label>
-            <div className="relative">
+
+          <Input
+            id="recipient"
+            value={recipient}
+            onChange={handleRecipientChange}
+            className="px-5 pt-10 pb-4 h-20 bg-[#1A1A20] focus:bg-[#1A1A20] border-white/10 text-white text-md focus:ring-1 rounded-3xl"
+            style={{
+              WebkitAppearance: 'none',
+              appearance: 'none',
+              color: 'white'
+            }}
+            autoComplete="off"
+            required
+          />
+        {error && <div className="text-red-500 text-sm">{error}</div>}
+
+        </div>
+
+        <div className="relative">
+          <div className="relative h-20 bg-transparent rounded-xl flex items-center justify-center">
+            <div className="flex items-center justify-center">
               <Input
                 id="amount"
-                placeholder="0.0"
                 value={amount}
                 onChange={handleAmountChange}
-                className="h-12 pr-16 bg-[#2A2A2F] border-gray-700"
+                placeholder="0.00"
+                className="text-white -ml-16 text-3xl font-semibold text-right bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                style={{ 
+                  width: 'auto', 
+                  minWidth: '80px',
+                  maxWidth: '200px',
+                  outline: 'none',
+                  boxShadow: 'none'
+                }}
+                autoComplete="off"
                 required
               />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <span className="text-gray-400">USDC</span>
-              </div>
+              <span className="text-white/70 text-2xl font-medium ml-1">USDC</span>
             </div>
-            <button 
-              type="button" 
-              className="text-xs text-cyan-400 hover:text-cyan-300"
-              onClick={() => {
-                setAmount(formattedUsdcBalance);
-              }}
-            >
-              Use max
-            </button>
           </div>
-          
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          
-          <div className="text-sm text-gray-400 p-3 bg-gray-800 rounded-lg">
-            <p className="mb-1">SUI Balance: {formattedSuiBalance} SUI</p>
-            <p>SUI will be used only for gas fees.</p>
-          </div>
-          
-          <Button
-            type="submit"
-            className="w-full h-12 rounded-full font-medium mt-4"
-            style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Processing..." : "Withdraw USDC"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+      
+      <div className="mt-auto pt-8 fixed bottom-6 left-4 right-4">
+        <Button
+          onClick={withdraw}
+          className="w-full h-12 rounded-full font-semiobold text-lg"
+          style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
+          disabled={isSubmitting}
+        >
+        <Upload className="size-5 text-white" />
+
+          {isSubmitting ? "Processing..." : "Withdraw"}
+        </Button>
+      </div>
+    </div>
   );
 } 
