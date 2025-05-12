@@ -136,13 +136,14 @@ export function BalanceCard({
           {/* Action Buttons - preventing click propagation so they work independently */}
           {!disableActions && (
             <div className="grid grid-cols-3 gap-2 py-2">
-              <button 
+              <Link 
+                href="/deposit" 
                 className="flex flex-col items-center justify-center py-4 rounded-lg border border-gray-700 hover:bg-gray-800 transition"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Download className="h-6 w-6 mb-2 text-white" />
                 <span className="text-sm text-white">Deposit</span>
-              </button>
+              </Link>
               
               <Link 
                 href="/withdraw" 
