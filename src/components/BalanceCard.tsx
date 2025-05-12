@@ -137,7 +137,7 @@ export function BalanceCard({
           {!disableActions && (
             <div className="grid grid-cols-3 gap-2 py-2">
               <Link 
-                href="/deposit" 
+                href={accountId ? `/merchant/${accountId}/deposit` : "/deposit"} 
                 className="flex flex-col items-center justify-center py-4 rounded-lg border border-gray-700 hover:bg-gray-800 transition"
                 onClick={(e) => e.stopPropagation()}
               >
