@@ -230,64 +230,56 @@ export function WithdrawForm() {
   const formattedUsdcBalance = formatUsdcBalance(balanceInUsdc, usdcDecimals);
   
   return (
-    <Card className="bg-[#2A2A2F] border-none shadow-lg">
-      <CardHeader>
-        <CardTitle className="text-white text-2xl">Withdraw USDC</CardTitle>
-        <CardDescription className="text-gray-400">
-          Transfer USDC tokens to another wallet address
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="recipient" className="text-white">Recipient Address</Label>
-            <Input
-              id="recipient"
-              placeholder="0x..."
-              value={recipient}
-              onChange={handleRecipientChange}
-              className="h-12 bg-[#2A2A2F] border-gray-700"
-              required
-            />
-          </div>
+<div>
+<form onSubmit={handleSubmit} className="space-y-6">
+    <div className="relative mb-20">
+        <div className="absolute text-sm left-5 top-4 font-medium text-white/70 pointer-events-none">
+            Recipient Address
+        </div>
+        {error && <div className="text-red-500 text-sm">{error}</div>}
+
+        <Input
+        id="recipient"
+        value={recipient}
+        onChange={handleRecipientChange}
+        className="px-5 pt-10 pb-4 h-20 bg-[#1A1A20] focus:bg-[#1A1A20] border-white/10 text-white text-md focus:ring-1 rounded-3xl"
+        style={{
           
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="text-white">
-              Amount (USDC)
-              <span className="text-sm ml-2 text-gray-400">
-                Available: {formattedUsdcBalance} USDC
-              </span>
-            </Label>
-            <div className="relative">
-              <Input
-                id="amount"
-                placeholder="0.0"
-                value={amount}
-                onChange={handleAmountChange}
-                className="h-12 pr-16 bg-[#2A2A2F] border-gray-700"
-                required
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <span className="text-gray-400">USDC</span>
-              </div>
-            </div>
-            <button 
-              type="button" 
-              className="text-xs text-cyan-400 hover:text-cyan-300"
-              onClick={() => {
-                setAmount(formattedUsdcBalance);
-              }}
-            >
-              Use max
-            </button>
-          </div>
-          
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          
-          <div className="text-sm text-gray-400 p-3 bg-gray-800 rounded-lg">
+            WebkitAppearance: 'none',
+            appearance: 'none',
+            color: 'white'
+        }}
+        autoComplete="off"
+        required
+        />
+    </div>
+
+    <div className="relative">
+      <div className="relative h-20 bg-transparent rounded-xl flex items-center justify-center">
+        <div className="flex items-center justify-center">
+          <Input
+            id="amount"
+            value={amount}
+            onChange={handleAmountChange}
+            placeholder="0.00"
+            className="text-white -ml-16 text-3xl font-semibold text-right bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            style={{ 
+              width: 'auto', 
+              minWidth: '80px',
+              maxWidth: '200px',
+              outline: 'none',
+              boxShadow: 'none'
+            }}
+            autoComplete="off"
+            required
+          />
+          <span className="text-white/70 text-2xl font-medium ml-1">USDC</span>
+        </div>
+      </div>
+    </div>
+    <div className="text-sm text-gray-400 p-3 bg-gray-800 rounded-lg">
+            <p>SUI will be used for gas fees.</p>
             <p className="mb-1">SUI Balance: {formattedSuiBalance} SUI</p>
-            <p>SUI will be used only for gas fees.</p>
           </div>
           
           <Button
@@ -296,10 +288,9 @@ export function WithdrawForm() {
             style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Processing..." : "Withdraw USDC"}
+            {isSubmitting ? "Processing..." : "Withdraw"}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 } 
