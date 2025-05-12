@@ -3,6 +3,7 @@ import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { BalanceCard } from "@/components/BalanceCard";
+import { WalletInfoCard } from "@/components/WalletInfoCard";
 
 export default function Home() {
   const currentAccount = useCurrentAccount();
@@ -21,18 +22,11 @@ export default function Home() {
   }
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-8">
+    <main className="container mx-auto px-4 pt-10">
+      <div className="max-w-2xl mx-auto space-y-8 mt-10">
+
         {/* Balance Card */}
         <BalanceCard />
-        
-        {/* Wallet Info Card */}
-        <div className="p-5 rounded-lg border border-gray-700 bg-[#2A2A2F] shadow-lg">
-          <h2 className="text-lg font-semibold mb-2 text-gray-300">Connected Wallet</h2>
-          <p className="font-mono text-sm break-all text-gray-400">
-            {currentAccount.address}
-          </p>
-        </div>
         
         {/* Additional components can be added here later */}
       </div>
