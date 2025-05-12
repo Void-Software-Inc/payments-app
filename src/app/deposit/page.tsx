@@ -4,7 +4,7 @@ import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { DepositCard } from './components/DepositCard';
-import { FiatButton } from './components/FiatButton';
+import { FiatButton } from '@/components/FiatButton';
 
 export default function DepositPage() {
   const currentAccount = useCurrentAccount();

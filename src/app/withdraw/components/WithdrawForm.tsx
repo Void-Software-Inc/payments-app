@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Wallet, QrCode, ArrowDown } from "lucide-react";
 import { 
   useCurrentAccount, 
   useSignTransaction, 
@@ -16,11 +18,18 @@ import { signAndExecute, handleTxResult } from "@/utils/Tx";
 import { formatSuiBalance } from "@/utils/formatters";
 import { getCoinDecimals } from "@/utils/helpers";
 import { useRouter } from "next/navigation";
-import { Upload } from "lucide-react";
+import Image from "next/image";
+import { FiatButton } from "@/components/FiatButton";
 
 // USDC coin type - ensure this matches the BalanceCard.tsx definition
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC";
 const SUI_COIN_TYPE = "0x2::sui::SUI";
+
+// Custom styles to ensure white text everywhere
+const selectStyles = {
+  trigger: "h-8 w-[105px] pl-2 pr-2 bg-transparent border-0 focus:ring-0 text-white [&>svg]:text-white [&_svg]:text-white [&_svg]:opacity-100",
+  item: "text-white focus:bg-gray-700 focus:text-white hover:text-white data-[highlighted]:text-white data-[state=checked]:text-white data-[disabled]:text-white"
+};
 
 export function WithdrawForm() {
   const [amount, setAmount] = useState("");
@@ -31,6 +40,7 @@ export function WithdrawForm() {
   const [balanceInUsdc, setBalanceInUsdc] = useState<bigint>(BigInt(0));
   const [usdcDecimals, setUsdcDecimals] = useState<number>(6); // Default USDC decimals is usually 6
   const [usdcCoins, setUsdcCoins] = useState<any[]>([]);
+  const [selectedCoin, setSelectedCoin] = useState("SUI");
   
   const currentAccount = useCurrentAccount();
   const signTransaction = useSignTransaction();
@@ -229,67 +239,101 @@ export function WithdrawForm() {
   const formattedUsdcBalance = formatUsdcBalance(balanceInUsdc, usdcDecimals);
   
   return (
-    <div className="flex flex-col h-full justify-between">
-      <div className="space-y-6">
-        <div className="relative mb-20">
-          <div className="absolute text-sm left-5 top-4 font-medium text-white/70 pointer-events-none">
-            Recipient Address
-          </div>
-
-          <Input
-            id="recipient"
-            value={recipient}
-            onChange={handleRecipientChange}
-            className="px-5 pt-10 pb-4 h-20 bg-[#1A1A20] focus:bg-[#1A1A20] border-white/10 text-white text-md focus:ring-1 rounded-3xl"
-            style={{
-              WebkitAppearance: 'none',
-              appearance: 'none',
-              color: 'white'
-            }}
-            autoComplete="off"
-            required
-          />
-        {error && <div className="text-red-500 text-sm">{error}</div>}
-
-        </div>
-
-        <div className="relative">
-          <div className="relative h-20 bg-transparent rounded-xl flex items-center justify-center">
-            <div className="flex items-center justify-center">
-              <Input
+    <div>
+        <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
+        <CardContent className="p-6 space-y-6">
+        
+            
+            {/* Amount Input */}
+            <div className="space-y-2">
+            <Label htmlFor="amount" className="text-md text-[#c8c8c8] font-medium">
+                Amount
+            </Label>
+            <div className="relative">
+                <Input
                 id="amount"
                 value={amount}
                 onChange={handleAmountChange}
                 placeholder="0.00"
-                className="text-white -ml-16 text-3xl font-semibold text-right bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                style={{ 
-                  width: 'auto', 
-                  minWidth: '80px',
-                  maxWidth: '200px',
-                  outline: 'none',
-                  boxShadow: 'none'
-                }}
-                autoComplete="off"
-                required
-              />
-              <span className="text-white/70 text-2xl font-medium ml-1">USDC</span>
+                className="h-14 bg-transparent border-[#5E6164] rounded-lg text-white pr-24 text-lg"
+                autoComplete="false"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <div className="h-8 bg-transparent text-white flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-transparent text-white flex items-center justify-center">
+                                {selectedCoin === "SUI" ? (
+                                    <Image src="/sui-logo.webp" alt="SUI" width={24} height={24} className="rounded-full" />
+                                ) : (
+                                    <Image src="/usdc-logo.webp" alt="USDC" width={26} height={26} className="rounded-full" />
+                                )}
+                            </div>
+                            <span className="text-sm font-medium text-white">{selectedCoin}</span>
+                        </div>
+                        <button 
+                            onClick={() => setSelectedCoin(selectedCoin === "SUI" ? "USDC" : "SUI")}
+                            className="text-white"
+                        >
+                            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
+                                <path d="M4.93179 5.43179C4.75605 5.60753 4.75605 5.89245 4.93179 6.06819C5.10753 6.24392 5.39245 6.24392 5.56819 6.06819L7.49999 4.13638L9.43179 6.06819C9.60753 6.24392 9.89245 6.24392 10.0682 6.06819C10.2439 5.89245 10.2439 5.60753 10.0682 5.43179L7.81819 3.18179C7.73379 3.0974 7.61933 3.04999 7.49999 3.04999C7.38064 3.04999 7.26618 3.0974 7.18179 3.18179L4.93179 5.43179ZM10.0682 9.56819C10.2439 9.39245 10.2439 9.10753 10.0682 8.93179C9.89245 8.75606 9.60753 8.75606 9.43179 8.93179L7.49999 10.8636L5.56819 8.93179C5.39245 8.75606 5.10753 8.75606 4.93179 8.93179C4.75605 9.10753 4.75605 9.39245 4.93179 9.56819L7.18179 11.8182C7.26618 11.9026 7.38064 11.95 7.49999 11.95C7.61933 11.95 7.73379 11.9026 7.81819 11.8182L10.0682 9.56819Z" fill="white" fillRule="evenodd" clipRule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="mt-auto pt-8 fixed bottom-6 left-4 right-4">
-        <Button
-          onClick={withdraw}
-          className="w-full h-12 rounded-full font-semiobold text-lg"
-          style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
-          disabled={isSubmitting}
-        >
-        <Upload className="size-5 text-white" />
+            <div className="flex items-center justify-between text-xs text-gray-400 px-1">
+                <div className="flex items-center gap-1">
+                <Wallet className="h-3 w-3" />
+                <span>23</span>
+                </div>
+                <div className="flex items-center gap-1">
+                <ArrowDown className="h-3 w-3" />
+                <span>76538</span>
+                </div>
+            </div>
+            </div>
+            
+            {/* Recipient Address Input */}
+            <div className="space-y-2 mt-2">
+            <Label htmlFor="recipient" className="text-md text-[#c8c8c8] font-medium">
+                Recipient Address
+            </Label>
+            <div className="flex items-center gap-2">
+                <Input
+                id="recipient"
+                value={recipient}
+                onChange={handleRecipientChange}
+                placeholder="0x..."
+                className="h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg"
+                autoComplete="false"
+                />
+                <Button 
+                variant="outline"
+                className="flex-shrink-0 h-14 w-14 rounded-md bg-transparent border-[#5E6164] flex items-center justify-center hover:bg-[#353550]"
+                onClick={() => {}} // No functionality for now
+                >
+                <QrCode className="size-7 text-gray-300" />
+                </Button>
+            </div>
+            </div>
+            
+            {error && (
+            <div className="text-red-500 text-sm mt-2">{error}</div>
+            )}
+            
+            {/* Withdrawal Button */}
+            <Button
+            onClick={withdraw}
+            className="w-full h-14 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
+            disabled={isSubmitting}
+            >
+            {isSubmitting ? "Processing..." : "Withdraw Now"}
+            </Button>
+        </CardContent>
+        </Card>
 
-          {isSubmitting ? "Processing..." : "Withdraw"}
-        </Button>
-      </div>
-    </div>
+    <FiatButton />
+   
+  </div>
   );
 } 

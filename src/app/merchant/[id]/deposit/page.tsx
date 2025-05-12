@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DepositCard } from "./components/DepositCard";
-import { FiatButton } from "./components/FiatButton";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { usePaymentClient } from "@/hooks/usePaymentClient";
 import { Toaster } from "sonner";
+import { FiatButton } from "@/components/FiatButton";
 
 export default function DepositPage() {
   const params = useParams();
