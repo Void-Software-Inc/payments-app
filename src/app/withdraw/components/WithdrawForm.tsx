@@ -276,10 +276,6 @@ export function WithdrawForm() {
             </div>
           </div>
         </div>
-        <div className="text-sm text-gray-400 p-3 bg-gray-800 rounded-lg">
-          <p>SUI will be used for gas fees.</p>
-          <p className="mb-1">SUI Balance: {formattedSuiBalance} SUI</p>
-        </div>
       </div>
       
       <div className="mt-auto pt-8 fixed bottom-6 left-4 right-4">

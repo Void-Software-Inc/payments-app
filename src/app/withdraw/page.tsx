@@ -4,6 +4,7 @@ import { WithdrawForm } from "./components/WithdrawForm";
 import { BalanceDisplay } from "./components/BalanceDisplay";
 import { HeaderNav } from "./components/HeaderNav";
 import { ArrowDown } from "lucide-react";
+import { AlertSuiBalance } from "./components/AlertSuiBalance";
 
 export default function WithdrawPage() {
   return (
@@ -11,9 +12,10 @@ export default function WithdrawPage() {
     <div className="container mx-auto w-full flex justify-center 8">
         <div className="w-[90%] h-full">
             <HeaderNav />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-20 pb-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-10">
             {/* Balance card on the left */}
                 <div className="col-span-1">
+                    <AlertSuiBalance />
                     <BalanceDisplay />
                 </div>
                 <div className="w-full h-fit flex justify-center text-[#7AC0E0]">
