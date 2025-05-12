@@ -35,7 +35,7 @@ export function usePaymentClient() {
       const client = await getOrInitClient(userAddr);
       await client.switchAccount(paymentAccountId);
     } catch (error) {
-      console.error("Error switching dao:", error);
+      console.error("Error switching Payment Account:", error);
       throw error;
     }
   };

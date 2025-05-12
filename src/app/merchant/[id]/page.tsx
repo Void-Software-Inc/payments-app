@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Payment } from "@account.tech/payment";
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
+import { useSuiClient } from "@mysten/dapp-kit"
 import { Toaster } from "sonner"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { BalanceCard } from "@/components/BalanceCard"
@@ -13,16 +14,24 @@ import { truncateMiddle } from "@/utils/formatters"
 import { User } from "lucide-react"
 import Link from "next/link"
 import { WalletInfoCard } from "@/components/WalletInfoCard"
+import { getCoinDecimals } from "@/utils/helpers"
+
+// Define constants for coin types
+const SUI_COIN_TYPE = "0x2::sui::SUI";
+const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC";
 
 export default function PaymentAccountPage() {
   const params = useParams()
   const router = useRouter()
   const { getPaymentAccount } = usePaymentClient()
   const currentAccount = useCurrentAccount()
+  const suiClient = useSuiClient()
   const getOrInitClient = usePaymentStore(state => state.getOrInitClient);
   const [paymentAcc, setPaymentAcc] = useState<Payment | null>(null);
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [balanceInSui, setBalanceInSui] = useState<bigint>(BigInt(0))
+  const [balanceInUsdc, setBalanceInUsdc] = useState<bigint>(BigInt(0))
   
   const accountId = params.id as string
   
@@ -34,8 +43,13 @@ export default function PaymentAccountPage() {
         setIsLoading(true);
         const fetchingPaymentAccount = await getPaymentAccount(currentAccount.address, accountId);
         setPaymentAcc(fetchingPaymentAccount)
+        
+        // Fetch coins for the payment account
+        if (fetchingPaymentAccount) {
+          await fetchAccountCoins(fetchingPaymentAccount.id);
+        }
       } catch (error) {
-        console.error("Error initializing dao:", error);
+        console.error("Error initializing payment account:", error);
         setPaymentAcc(null)
       } finally {
         setIsLoading(false);
@@ -43,7 +57,34 @@ export default function PaymentAccountPage() {
     };
 
     initPaymentClient();
-  }, [currentAccount?.address, accountId, getOrInitClient, getPaymentAccount]);
+  }, [currentAccount?.address, accountId, getOrInitClient, getPaymentAccount, suiClient]);
+
+  // Fetch coins owned by the payment account
+  const fetchAccountCoins = async (accountId: string) => {
+    try {
+      // Get all coins owned by the payment account
+      const allCoinsResponse = await suiClient.getAllCoins({
+        owner: accountId
+      });
+      
+      // Calculate totals for SUI and USDC
+      let totalSuiBalance = BigInt(0);
+      let totalUsdcBalance = BigInt(0);
+      
+      for (const coin of allCoinsResponse.data) {
+        if (coin.coinType === SUI_COIN_TYPE) {
+          totalSuiBalance += BigInt(coin.balance);
+        } else if (coin.coinType === USDC_COIN_TYPE) {
+          totalUsdcBalance += BigInt(coin.balance);
+        }
+      }
+      
+      setBalanceInSui(totalSuiBalance);
+      setBalanceInUsdc(totalUsdcBalance);
+    } catch (error) {
+      console.error("Failed to fetch account coins:", error);
+    }
+  };
 
   // Get account name from metadata
   const accountName = paymentAcc?.metadata?.find(item => item.key === "name")?.value || "Unnamed Account";
@@ -86,12 +127,13 @@ export default function PaymentAccountPage() {
           </div>
         </div>
         
-        {/* Balance Card */}
+        {/* Balance Card with actual coin data */}
         <div className="mb-6">
           <BalanceCard 
             title="Account Balance" 
             accountId={accountId}
-            customBalance={BigInt(0)} // Replace with actual balance when available
+            customBalance={balanceInSui}
+            customUsdcBalance={balanceInUsdc}
           />
         </div>
         
