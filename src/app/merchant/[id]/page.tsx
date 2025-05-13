@@ -57,7 +57,7 @@ export default function PaymentAccountPage() {
     };
 
     initPaymentClient();
-  }, [  getOrInitClient, suiClient]);
+  }, [currentAccount, accountId]);
 
   // Fetch coins owned by the payment account
   const fetchAccountCoins = async (accountId: string) => {

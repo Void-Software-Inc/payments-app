@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { HandHelping, CirclePlus } from "lucide-react"
+import { HandHelping, CirclePlus, HandCoins } from "lucide-react"
 
 export function AskPaymentActions() {
   return (
@@ -9,7 +9,7 @@ export function AskPaymentActions() {
         size="icon"
         className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5B5F62] hover:bg-black/30"
       >
-        <HandHelping className="size-7 text-white" />
+        <HandCoins className="size-7 text-white" />
       </Button>
       <Button
         variant="outline"

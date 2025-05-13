@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useCurrentAccount } from "@mysten/dapp-kit";
+import { usePaymentClient } from "@/hooks/usePaymentClient";
+import { usePaymentStore } from "@/store/usePaymentStore";
 
 interface ProfileSection {
   title: string;
@@ -15,10 +19,26 @@ interface MerchantProfileSectionsProps {
 export function MerchantProfileSections({ username }: MerchantProfileSectionsProps) {
   const params = useParams();
   const merchantId = params.id as string;
-  const displayName = username || "Shop";
+  const currentAccount = useCurrentAccount();
+  const { getPaymentAccount } = usePaymentClient();
+  const { refreshTrigger } = usePaymentStore();
+  const [shopName, setShopName] = useState<string>("Shop");
+  
+  useEffect(() => {
+    if (currentAccount?.address) {
+      getPaymentAccount(currentAccount.address, merchantId).then(account => {
+        const name = account?.metadata?.find(item => item.key === "name")?.value;
+        if (name) {
+          setShopName(name);
+        }
+      }).catch(err => {
+        console.error("Error fetching payment account:", err);
+      });
+    }
+  }, [currentAccount?.address, merchantId, getPaymentAccount, refreshTrigger]);
   
   const sections: ProfileSection[] = [
-    { title: "Shop Name", link: `/merchant/${merchantId}/shop-name`, value: displayName },
+    { title: "Shop Name", link: `/merchant/${merchantId}/profile/name`, value: shopName },
     { title: "Security", link: `/merchant/${merchantId}/security` },
     { title: "Transactions", link: `/merchant/${merchantId}/transactions` },
     { title: "Recovery", link: `/merchant/${merchantId}/recovery` }

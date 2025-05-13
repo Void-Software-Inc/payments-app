@@ -1,10 +1,9 @@
 "use client"
 import { useCurrentAccount } from '@mysten/dapp-kit';
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { usePaymentClient } from '@/hooks/usePaymentClient';
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { usePaymentStore } from "@/store/usePaymentStore";
 
 // Import components from profile folder
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -29,14 +28,23 @@ export default function MerchantProfilePage() {
   const currentAccount = useCurrentAccount();
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
   const paymentAccountId = params.id as string;
   const { getUserProfile, getUser, getPaymentAccount } = usePaymentClient();
+  const { triggerRefresh } = usePaymentStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [paymentAccount, setPaymentAccount] = useState<any>(null);
+  
+  // Trigger refresh when navigating to profile page
+  useEffect(() => {
+    if (currentAccount?.address) {
+      triggerRefresh();
+    }
+  }, [currentAccount?.address, triggerRefresh, pathname]);
   
   // Redirect to login if wallet is not connected
   useEffect(() => {
