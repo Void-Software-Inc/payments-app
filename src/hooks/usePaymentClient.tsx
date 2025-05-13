@@ -104,6 +104,22 @@ export function usePaymentClient() {
     }
   };
 
+  const modifyName = async (
+    userAddr: string,
+    accountId: string,
+    tx: Transaction,
+    newName: string
+  ) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      client.modifyName(tx, newName);
+      return true;
+    } catch (error) {
+      console.error("Error modifying payment account name:", error);
+      throw error;
+    }
+  };
+
   const getUserPaymentAccounts = async (userAddr: string): Promise<{ id: string; name: string }[]> => {
     try {
       const client = await getOrInitClient(userAddr);
@@ -123,5 +139,6 @@ export function usePaymentClient() {
     getUserProfile,
     getPaymentAccount,
     getUserPaymentAccounts,
+    modifyName,
   };
 }

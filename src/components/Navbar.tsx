@@ -33,6 +33,9 @@ export function Navbar() {
   const isMainQRCodePage = pathname === '/profile/qr-code';
   const isMerchantQRCodePage = merchantId && pathname === `/merchant/${merchantId}/profile/qr-code`;
   
+  // Check if we're on the name change page
+  const isMerchantNamePage = merchantId && pathname === `/merchant/${merchantId}/profile/name`;
+  
   // Combined check for any profile or QR code page
   const isAnyQRCodePage = isMainQRCodePage || isMerchantQRCodePage;
   const isAnyProfilePage = isMainProfilePage || isMerchantProfilePage || isAnyQRCodePage;
@@ -59,6 +62,12 @@ export function Navbar() {
   }, [currentAccount?.address, getUserProfile]);
 
   const handleBackNavigation = () => {
+    // If on merchant name page, go to merchant profile page
+    if (merchantId && pathname === `/merchant/${merchantId}/profile/name`) {
+      router.push(`/merchant/${merchantId}/profile`);
+      return;
+    }
+    
     // If on merchant QR code page, go to merchant profile page
     if (isMerchantQRCodePage && merchantId) {
       router.push(`/merchant/${merchantId}/profile`);
@@ -175,7 +184,7 @@ export function Navbar() {
                 </>
               )}
               
-              {merchantId && !isMerchantProfilePage && !isMerchantQRCodePage && !isMerchantCreatePage && (
+              {merchantId && !isMerchantProfilePage && !isMerchantQRCodePage && !isMerchantCreatePage && !isMerchantNamePage && (
                 <Button
                   variant="outline"
                   size="icon"
