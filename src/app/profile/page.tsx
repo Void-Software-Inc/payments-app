@@ -2,7 +2,6 @@
 import { useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit';
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { WalletInfoCard } from '@/components/WalletInfoCard';
 import { Button } from "@/components/ui/button";
 import { LogOut, Copy } from "lucide-react";
 import { useState } from "react";
