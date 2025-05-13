@@ -111,7 +111,7 @@ export default function MerchantProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 max-w-md pt-4">
+    <div className="container mx-auto px-4 max-w-md pt-6">
       <div className="mb-6 flex justify-center items-center">
         <h1 className="text-2xl font-bold text-white">Merchant Profile</h1>
       </div>

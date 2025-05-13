@@ -13,7 +13,6 @@ import { BalanceCard } from "@/components/BalanceCard"
 import { truncateMiddle } from "@/utils/formatters"
 import { User } from "lucide-react"
 import Link from "next/link"
-import { WalletInfoCard } from "@/components/WalletInfoCard"
 import { getCoinDecimals } from "@/utils/helpers"
 import { ActionButtons } from "@/components/ActionButtons"
 
@@ -136,13 +135,7 @@ export default function PaymentAccountPage() {
             customBalance={balanceInSui}
             customUsdcBalance={balanceInUsdc}
           />
-        </div>
-        
-        {/* Wallet Info Card */}
-        <div className="mb-6">
-          <WalletInfoCard merchantId={accountId} />
-        </div>
-    
+        </div> 
       </div>
       <ActionButtons />
     </div>

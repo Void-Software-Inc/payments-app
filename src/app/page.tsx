@@ -3,7 +3,6 @@ import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { BalanceCard } from "@/components/BalanceCard";
-import { WalletInfoCard } from "@/components/WalletInfoCard";
 
 export default function Home() {
   const currentAccount = useCurrentAccount();
