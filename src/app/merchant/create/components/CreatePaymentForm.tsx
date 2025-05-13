@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,29 +19,12 @@ export function CreatePaymentForm() {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  const { getOrInitClient, triggerRefresh, resetClient } = usePaymentStore()
-  const { createPaymentAccount } = usePaymentClient()
+  const { triggerRefresh, resetClient } = usePaymentStore()
+  const { createPaymentAccount, getUser } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   const router = useRouter()
-  
-  // Cleanup when component unmounts
-  useEffect(() => {
-    return () => {
-      // Reset any lingering client state when component unmounts
-      if (!isCreating) {
-        resetClient()
-      }
-    }
-  }, [isCreating, resetClient])
-  
-  const handleCancel = () => {
-    // Clean up state to prevent errors
-    resetClient()
-    // Navigate back to merchant page
-    router.push("/merchant")
-  }
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -60,11 +43,11 @@ export function CreatePaymentForm() {
       setIsCreating(true)
       setError(null)
       
-      const client = await getOrInitClient(currentAccount.address)
+      // Get current user to check if user has an ID
+      const currentUser = await getUser(currentAccount.address)
       
-      if (!client) {
-        throw new Error("Client not initialized")
-      }
+      // Create a new transaction block
+      const tx = new Transaction()
       
       // Set username to the trimmed input value, or use wallet address as fallback
       const userUsername = username.trim() || undefined
@@ -73,98 +56,110 @@ export function CreatePaymentForm() {
       const userProfilePicture = profilePicture.trim() || undefined
       
       // Check if user has an ID, if empty provide username and profile picture
-      const newUserParams = !client.user?.id 
+      const newUserParams = !currentUser?.id
         ? { 
             username: userUsername || currentAccount.address, 
             profilePicture: userProfilePicture || "" 
           }
-        : undefined;
-
-     // Create a new transaction block
-      const tx = new Transaction();
+        : undefined
         
       // Call createPaymentAccount
       createPaymentAccount(currentAccount.address, tx, name, newUserParams)
       
-      // Execute the transaction using the Tx utility
+      // Execute the transaction
       const txResult = await signAndExecute({
         suiClient,
         currentAccount,
         tx,
         signTransaction,
         toast
-      });
+      }).catch(err => {
+        // Handle user rejection of transaction
+        if (err.message?.includes('User rejected')) {
+          toast.error("Transaction canceled by user")
+          return null
+        }
+        throw err
+      })
+      
+      // If transaction was rejected, stop processing
+      if (!txResult) {
+        return
+      }
 
-      handleTxResult(txResult, toast);
+      handleTxResult(txResult, toast)
       
-      console.log("Transaction result:", txResult);
+      // Reset the client and trigger refresh
+      resetClient()
+      triggerRefresh()
       
-      // Reset the client to force a fresh load on the next page
-      resetClient();
-      
-      // Trigger a refresh in the store
-      triggerRefresh();
-      
-      router.push("/merchant");
+      router.push("/merchant")
       
     } catch (err) {
       console.error("Error creating payment account:", err)
-      setError("Failed to create payment account");
-      toast.error(err instanceof Error ? err.message : "Failed to create payment account");
+      setError("Failed to create payment account")
+      toast.error(err instanceof Error ? err.message : "Failed to create payment account")
     } finally {
       setIsCreating(false)
     }
   }
   
   return (
-    <div className="w-full max-w-md mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="name" className="text-white">Payment Account Name</Label>
-          <Input
-            id="name"
-            placeholder="Enter account name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="h-12"
-            required
-          />
-        </div>
+    <div className="h-full w-full bg-[#1B1D22] flex flex-col items-center justify-center pt-24">
+      <div className="w-[90%] max-w-md">
+        <h1 className="text-4xl font-bold text-white mb-16 text-center">Create Account</h1>
         
-        <div className="space-y-2">
-          <Label htmlFor="username" className="text-white">Username (Optional)</Label>
-          <Input
-            id="username"
-            placeholder="Enter username or leave empty for default"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="h-12"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="profilePicture" className="text-white">Profile Picture URL (Optional)</Label>
-          <Input
-            id="profilePicture"
-            placeholder="Enter URL to profile picture"
-            value={profilePicture}
-            onChange={(e) => setProfilePicture(e.target.value)}
-            className="h-12"
-            disabled
-          />
-        </div>
-        
-        {error && <div className="text-red-500 text-sm">{error}</div>}
-        
-        <Button
-          type="submit"
-          className="w-full h-12 rounded-full font-medium"
-          style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
-          disabled={isCreating}
-        >
-          {isCreating ? "Creating..." : "Create Payment Account"}
-        </Button>
-      </form>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-[#B2B2B2]">Name</Label>
+            <Input
+              id="name"
+              placeholder="Enter account name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white"
+              required
+              autoComplete="off"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-[#B2B2B2]">Username (Optional)</Label>
+            <Input
+              id="username"
+              placeholder="Enter username or leave empty for default"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white"
+              autoComplete="off"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="profilePicture" className="text-[#B2B2B2]">Profile Picture URL (Optional)</Label>
+            <Input
+              id="profilePicture"
+              placeholder=""
+              value={profilePicture}
+              onChange={(e) => setProfilePicture(e.target.value)}
+              className="h-12 bg-[#505052]/80 border-[#595C5F] text-white"
+              autoComplete="off"
+              disabled
+            />
+          </div>
+          
+          {error && <div className="text-red-500 text-sm">{error}</div>}
+          
+          <Button
+            type="submit"
+            className="w-full h-12 rounded-full font-medium mt-8"
+            style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
+            disabled={isCreating}
+          >
+            {isCreating ? "Creating..." : "Create Account"}
+          </Button>
+        </form>
+      </div>
     </div>
   )
 } 

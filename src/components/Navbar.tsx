@@ -18,6 +18,7 @@ export function Navbar() {
   const isHomePage = pathname === '/';
   const isLoginPage = pathname === '/login';
   const isMerchantMainPage = pathname === '/merchant';
+  const isMerchantCreatePage = pathname === '/merchant/create';
   
   // Check if we're on a merchant ID page
   const merchantIdMatch = pathname.match(/^\/merchant\/([^\/]+)/);
@@ -174,7 +175,7 @@ export function Navbar() {
                 </>
               )}
               
-              {merchantId && !isMerchantProfilePage && !isMerchantQRCodePage && (
+              {merchantId && !isMerchantProfilePage && !isMerchantQRCodePage && !isMerchantCreatePage && (
                 <Button
                   variant="outline"
                   size="icon"
