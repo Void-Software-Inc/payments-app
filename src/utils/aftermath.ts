@@ -31,7 +31,7 @@ export async function getTokenPrices(coinTypes: string[]): Promise<AftermathPric
     }
 
     const data = await response.json();
-    console.log('Aftermath price data:', data);
+  //  console.log('Aftermath price data:', data);
     return data;
   } catch (error) {
     console.error('Error fetching token prices from Aftermath:', error);

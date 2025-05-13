@@ -15,6 +15,7 @@ import { User } from "lucide-react"
 import Link from "next/link"
 import { WalletInfoCard } from "@/components/WalletInfoCard"
 import { getCoinDecimals } from "@/utils/helpers"
+import { ActionButtons } from "@/components/ActionButtons"
 
 // Define constants for coin types
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -57,7 +58,7 @@ export default function PaymentAccountPage() {
     };
 
     initPaymentClient();
-  }, [currentAccount?.address, accountId, getOrInitClient, getPaymentAccount, suiClient]);
+  }, [  getOrInitClient, suiClient]);
 
   // Fetch coins owned by the payment account
   const fetchAccountCoins = async (accountId: string) => {
@@ -143,6 +144,7 @@ export default function PaymentAccountPage() {
         </div>
     
       </div>
+      <ActionButtons />
     </div>
   )
 } 
