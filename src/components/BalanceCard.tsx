@@ -19,6 +19,7 @@ interface BalanceCardProps {
   accountId?: string;
   title?: string;
   customBalance?: bigint;
+  customUsdcBalance?: bigint;
   disableActions?: boolean;
 }
 
@@ -26,6 +27,7 @@ export function BalanceCard({
   accountId,
   title = "Total Balance",
   customBalance,
+  customUsdcBalance,
   disableActions = false
 }: BalanceCardProps) {
   const [balanceInSui, setBalanceInSui] = useState<bigint>(BigInt(0));
@@ -42,52 +44,75 @@ export function BalanceCard({
   });
 
   useEffect(() => {
-    // If customBalance is provided, use it for SUI balance instead of fetching
+    // If customBalance and customUsdcBalance are provided, use them instead of fetching
     if (customBalance !== undefined) {
       setBalanceInSui(customBalance);
-      return;
     }
     
-    const fetchBalances = async () => {
-      if (currentAccount?.address) {
-        try {
-          // Get all coins owned by the address using getAllCoins
-          const allCoinsResponse = await suiClient.getAllCoins({
-            owner: currentAccount.address
-          });
-          
-          // Find SUI coins and calculate total SUI balance
-          let totalSuiBalance = BigInt(0);
-          let totalUsdcBalance = BigInt(0);
-          
-          // Get USDC decimals
+    if (customUsdcBalance !== undefined) {
+      setBalanceInUsdc(customUsdcBalance);
+    }
+    
+    // Only fetch balances if custom balances are not provided
+    if (customBalance === undefined || customUsdcBalance === undefined) {
+      const fetchBalances = async () => {
+        if (currentAccount?.address) {
           try {
-            const decimals = await getCoinDecimals(USDC_COIN_TYPE, suiClient);
-            setUsdcDecimals(decimals);
-          } catch (error) {
-            console.warn("Failed to get USDC decimals, using default:", error);
-          }
-          
-          // Calculate total balances for each coin type
-          for (const coin of allCoinsResponse.data) {
-            if (coin.coinType === SUI_COIN_TYPE) {
-              totalSuiBalance += BigInt(coin.balance);
-            } else if (coin.coinType === USDC_COIN_TYPE) {
-              totalUsdcBalance += BigInt(coin.balance);
+            // Get all coins owned by the address using getAllCoins
+            const allCoinsResponse = await suiClient.getAllCoins({
+              owner: currentAccount.address
+            });
+            
+            // Find SUI coins and calculate total SUI balance
+            let totalSuiBalance = BigInt(0);
+            let totalUsdcBalance = BigInt(0);
+            
+            // Get USDC decimals
+            try {
+              const decimals = await getCoinDecimals(USDC_COIN_TYPE, suiClient);
+              setUsdcDecimals(decimals);
+            } catch (error) {
+              console.warn("Failed to get USDC decimals, using default:", error);
             }
+            
+            // Calculate total balances for each coin type
+            for (const coin of allCoinsResponse.data) {
+              if (coin.coinType === SUI_COIN_TYPE) {
+                totalSuiBalance += BigInt(coin.balance);
+              } else if (coin.coinType === USDC_COIN_TYPE) {
+                totalUsdcBalance += BigInt(coin.balance);
+              }
+            }
+            
+            // Only set values if custom values weren't provided
+            if (customBalance === undefined) {
+              setBalanceInSui(totalSuiBalance);
+            }
+            if (customUsdcBalance === undefined) {
+              setBalanceInUsdc(totalUsdcBalance);
+            }
+            
+          } catch (error) {
+            console.error("Failed to fetch balances:", error);
           }
-          
-          setBalanceInSui(totalSuiBalance);
-          setBalanceInUsdc(totalUsdcBalance);
-          
-        } catch (error) {
-          console.error("Failed to fetch balances:", error);
         }
+      };
+
+      fetchBalances();
+    }
+    
+    // Always get USDC decimals regardless of custom balances
+    const getUsdcDecimals = async () => {
+      try {
+        const decimals = await getCoinDecimals(USDC_COIN_TYPE, suiClient);
+        setUsdcDecimals(decimals);
+      } catch (error) {
+        console.warn("Failed to get USDC decimals, using default:", error);
       }
     };
-
-    fetchBalances();
-  }, [currentAccount, suiClient, customBalance]);
+    
+    getUsdcDecimals();
+  }, [currentAccount, suiClient, customBalance, customUsdcBalance]);
 
   // Toggle between SUI and USDC display
   const toggleBalanceDisplay = () => {

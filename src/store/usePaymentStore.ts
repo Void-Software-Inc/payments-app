@@ -54,7 +54,7 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
       }
     }
 
-    // If daoId is provided but different from current, switch to it
+    // If paymentAccountId is provided but different from current, switch to it
     if (paymentAccountId && client && client.paymentAccount?.id !== paymentAccountId) {
       try {
         console.log("Switching client to paymentAccountId:", paymentAccountId);
