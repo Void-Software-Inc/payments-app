@@ -1,5 +1,5 @@
 import { useRouter, useParams } from 'next/navigation';
-import { ScanEye, Plus, HandHelping, CirclePlus } from 'lucide-react';
+import { ScanEye, Plus, CirclePlus, HandCoins } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export function ActionButtons() {
@@ -18,7 +18,7 @@ export function ActionButtons() {
         size="icon"
         className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5B5F62] hover:bg-black/30"
       >
-        <HandHelping className="size-7 text-white" />
+        <HandCoins className="size-7 text-white" />
       </Button>
       <Button
         variant="outline"
