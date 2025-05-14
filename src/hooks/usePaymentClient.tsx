@@ -2,12 +2,42 @@
 import { PaymentClient, Payment } from "@account.tech/payment";
 import { Transaction, TransactionResult } from "@mysten/sui/transactions";
 import { usePaymentStore } from "@/store/usePaymentStore";
+import { Intent } from "@account.tech/core";
+
+// Define interface for Intent with additional properties used in our app
+interface ExtendedIntent extends Intent {
+  timestamp?: number;
+  creator?: string;
+  status?: string;
+}
+
+// Define interface for IntentArgs to match what's used in payment intents
+interface ExtendedIntentArgs {
+  amount?: string | number;
+  coinType?: string;
+  description?: string;
+  [key: string]: any;
+}
 
 // Define a Profile interface to match what's expected by components
 interface Profile {
   avatar?: string | null;
   username?: string;
   [key: string]: any;
+}
+
+// Define PendingPayment interface for structured payment data
+export interface PendingPayment {
+  id: string;
+  sender?: string;
+  description?: string;
+  amount: string;
+  date: string;
+  time: string;
+  status: string;
+  intentKey: string;
+  coinType: string;
+  rawIntent: Intent;
 }
 
 export function usePaymentClient() {
@@ -130,6 +160,92 @@ export function usePaymentClient() {
     }
   };
 
+  //====Pending====//
+  const getPendingPayments = async (userAddr: string, accountId?: string): Promise<Record<string, PendingPayment>> => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      const pendingIntents = client.getPendingPayments();
+      
+      // Transform the intents into a more app-friendly format
+      const transformedPayments: Record<string, PendingPayment> = {};
+      
+      for (const [key, intent] of Object.entries(pendingIntents)) {
+        // Cast intent to ExtendedIntent to access additional properties
+        const extIntent = intent as unknown as ExtendedIntent;
+        const extArgs = extIntent.args as unknown as ExtendedIntentArgs;
+        
+        // Extract data from the intent
+        const timestamp = new Date(extIntent.timestamp || Date.now());
+        const formattedDate = timestamp.toLocaleDateString();
+        const formattedTime = timestamp.toLocaleTimeString();
+        
+        // Extract amount and coin type from the intent args
+        const amount = extArgs?.amount?.toString() || "0";
+        const coinType = extArgs?.coinType || "unknown";
+        const description = extArgs?.description || "";
+        
+        transformedPayments[key] = {
+          id: key,
+          intentKey: key,
+          sender: extIntent.creator || "Unknown",
+          description,
+          amount,
+          date: formattedDate,
+          time: formattedTime,
+          status: extIntent.status || "pending",
+          coinType,
+          rawIntent: intent
+        };
+      }
+      
+      return transformedPayments;
+    } catch (error) {
+      console.error("Error getting pending payments:", error);
+      return {}; // Return empty object instead of throwing
+    }
+  };
+  
+  const getPaymentDetail = async (userAddr: string, accountId: string, paymentId: string): Promise<PendingPayment | null> => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      const intent = client.getIntent(paymentId);
+      
+      if (!intent) {
+        return null;
+      }
+      
+      // Cast intent to ExtendedIntent to access additional properties
+      const extIntent = intent as unknown as ExtendedIntent;
+      const extArgs = extIntent.args as unknown as ExtendedIntentArgs;
+      
+      // Extract data from the intent
+      const timestamp = new Date(extIntent.timestamp || Date.now());
+      const formattedDate = timestamp.toLocaleDateString();
+      const formattedTime = timestamp.toLocaleTimeString();
+      
+      // Extract details from the intent
+      const amount = extArgs?.amount?.toString() || "0";
+      const coinType = extArgs?.coinType || "unknown";
+      const description = extArgs?.description || "";
+      
+      return {
+        id: paymentId,
+        intentKey: paymentId,
+        sender: extIntent.creator || "Unknown",
+        description,
+        amount,
+        date: formattedDate,
+        time: formattedTime,
+        status: extIntent.status || "pending",
+        coinType,
+        rawIntent: intent
+      };
+    } catch (error) {
+      console.error("Error getting payment detail:", error);
+      return null;
+    }
+  };
+
   return {
     initPaymentClient,
     refresh,
@@ -140,5 +256,7 @@ export function usePaymentClient() {
     getPaymentAccount,
     getUserPaymentAccounts,
     modifyName,
+    getPendingPayments,
+    getPaymentDetail
   };
 }
