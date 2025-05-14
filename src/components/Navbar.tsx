@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Wallet, ChevronLeft, Store, User, QrCode, Home } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePaymentClient } from '@/hooks/usePaymentClient';
 
 export function Navbar() {
@@ -13,6 +13,7 @@ export function Navbar() {
   const router = useRouter();
   const { getUserProfile } = usePaymentClient();
   const [profilePic, setProfilePic] = useState<string | null>(null);
+  const previousPathRef = useRef<string | null>(null);
   
   // Check paths after hooks
   const isHomePage = pathname === '/';
@@ -24,6 +25,13 @@ export function Navbar() {
   const merchantIdMatch = pathname.match(/^\/merchant\/([^\/]+)/);
   const merchantId = merchantIdMatch ? merchantIdMatch[1] : null;
   const isMerchantIdPage = merchantId && pathname.startsWith(`/merchant/${merchantId}`);
+  
+  // Check if we're on the ask-payment page
+  const isAskPaymentPage = merchantId && pathname === `/merchant/${merchantId}/ask-payment`;
+  
+  // Check if we're on pending pages
+  const isPendingListPage = merchantId && pathname === `/merchant/${merchantId}/pending`;
+  const isPendingPaymentDetailPage = merchantId && pathname.match(/^\/merchant\/[^\/]+\/pending\/[^\/]+$/);
   
   // Check if we're on a profile page
   const isMainProfilePage = pathname === '/profile';
@@ -39,6 +47,14 @@ export function Navbar() {
   // Combined check for any profile or QR code page
   const isAnyQRCodePage = isMainQRCodePage || isMerchantQRCodePage;
   const isAnyProfilePage = isMainProfilePage || isMerchantProfilePage || isAnyQRCodePage;
+  
+  // Track navigation history for back button
+  useEffect(() => {
+    // Store path in ref before it changes
+    if (pathname && previousPathRef.current !== pathname) {
+      previousPathRef.current = pathname;
+    }
+  }, [pathname]);
   
   useEffect(() => {
     // Only fetch profile if we have an address
@@ -62,6 +78,9 @@ export function Navbar() {
   }, [currentAccount?.address, getUserProfile]);
 
   const handleBackNavigation = () => {
+    console.log("Current pathname:", pathname);
+    console.log("Merchant ID:", merchantId);
+    
     // If on merchant name page, go to merchant profile page
     if (merchantId && pathname === `/merchant/${merchantId}/profile/name`) {
       router.push(`/merchant/${merchantId}/profile`);
@@ -85,9 +104,28 @@ export function Navbar() {
       router.push(`/merchant/${merchantId}`);
       return;
     }
+
+    // If on merchant ask-payment page, go to merchant ID page
+    if (isAskPaymentPage) {
+      console.log("Navigating from ask-payment to:", `/merchant/${merchantId}`);
+      router.push(`/merchant/${merchantId}`);
+      return;
+    }
     
-    // If on merchant ID page (not QR code or deposit), go to /merchant
-    if (isMerchantIdPage) {
+    // If on pending payment detail page, use router.back()
+    if (isPendingPaymentDetailPage) {
+      router.back();
+      return;
+    }
+    
+    // If on pending list page, go to merchant ID page
+    if (isPendingListPage) {
+      router.push(`/merchant/${merchantId}`);
+      return;
+    }
+    
+    // If on merchant ID page (not QR code or deposit or ask-payment), go to /merchant
+    if (isMerchantIdPage && !isAskPaymentPage && !isPendingListPage && !isPendingPaymentDetailPage) {
       router.push('/merchant');
       return;
     }

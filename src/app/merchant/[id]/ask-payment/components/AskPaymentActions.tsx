@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { HandHelping, CirclePlus, HandCoins } from "lucide-react"
+import { CirclePlus, HandCoins } from "lucide-react"
 
 export function AskPaymentActions() {
   return (

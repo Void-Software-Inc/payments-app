@@ -15,6 +15,7 @@ import { User } from "lucide-react"
 import Link from "next/link"
 import { getCoinDecimals } from "@/utils/helpers"
 import { ActionButtons } from "@/components/ActionButtons"
+import { PendingPayments } from "./components/PendingPayments"
 
 // Define constants for coin types
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -117,25 +118,34 @@ export default function PaymentAccountPage() {
   }
   
   return (
-    <div className="w-full pt-20">
-      <div className="container mx-auto px-4 py-0 max-w-2xl">
-        <Toaster position="bottom-center" richColors closeButton />
-        <div className="mb-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-white">{accountName}</h1>
-            <p className="text-zinc-200 ml-1 text-sm">ID: {truncateMiddle(accountId)}</p>
+    <div className="w-full h-dvh overflow-y-auto">
+      <div className="w-full pt-20 pb-24 flex flex-col items-center">
+        <div className="w-[90%] h-full">
+          <div className="container mx-auto py-0 max-w-2xl">
+            <Toaster position="bottom-center" richColors closeButton />
+            <div className="mb-6 flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-white">{accountName}</h1>
+                <p className="text-zinc-200 ml-1 text-sm">ID: {truncateMiddle(accountId)}</p>
+              </div>
+            </div>
+            
+            {/* Balance Card with actual coin data */}
+            <div className="mb-10">
+              <BalanceCard 
+                title="Account Balance" 
+                accountId={accountId}
+                customBalance={balanceInSui}
+                customUsdcBalance={balanceInUsdc}
+              />
+            </div>
+            
+            {/* Pending Payments Section */}
+            <div className="mb-10">
+              <PendingPayments merchantId={accountId} limit={2} />
+            </div>
           </div>
         </div>
-        
-        {/* Balance Card with actual coin data */}
-        <div className="mb-6">
-          <BalanceCard 
-            title="Account Balance" 
-            accountId={accountId}
-            customBalance={balanceInSui}
-            customUsdcBalance={balanceInUsdc}
-          />
-        </div> 
       </div>
       <ActionButtons />
     </div>
