@@ -1,24 +1,53 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
+import { Loader2 } from "lucide-react"
 
 interface PaymentFormProps {
   onGeneratePayment: (amount: string, message: string) => void
+  isProcessing?: boolean
 }
 
-export function PaymentForm({ onGeneratePayment }: PaymentFormProps) {
-  const [amount, setAmount] = useState("0.00")
+export function PaymentForm({ onGeneratePayment, isProcessing = false }: PaymentFormProps) {
+  const [amount, setAmount] = useState("")
   const [message, setMessage] = useState("")
+  const [error, setError] = useState<string | null>(null)
+
+  // Focus the amount input when the component mounts
+  useEffect(() => {
+    const amountInput = document.getElementById('amount');
+    if (amountInput) {
+      amountInput.focus();
+    }
+  }, []);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow numbers and one comma/dot
-    const value = e.target.value.replace(/[^0-9.,]/g, "")
-    // Format with comma as decimal separator
-    setAmount(value)
+    const value = e.target.value;
+    
+    // Allow empty input for clearing
+    if (value === '') {
+      setAmount('');
+      return;
+    }
+    if (!/^[0-9]*\.?[0-9]*$/.test(value)) {
+      return;
+    }
+    
+    setAmount(value);
+    // Clear error when user starts typing a valid amount
+    if (value && parseFloat(value) > 0) {
+      setError(null);
+    }
   }
 
   const handleSubmit = () => {
+    // Validate amount
+    if (!amount || parseFloat(amount) <= 0) {
+      setError("Please enter an amount greater than 0")
+      return
+    }
+    
     onGeneratePayment(amount, message)
   }
 
@@ -33,6 +62,7 @@ export function PaymentForm({ onGeneratePayment }: PaymentFormProps) {
               type="text"
               value={amount}
               onChange={handleAmountChange}
+              placeholder="0.00"
               className="text-5xl font-semibold text-white bg-transparent border-none outline-none w-full p-0"
               aria-label="Payment amount in USDC"
             />
@@ -50,6 +80,7 @@ export function PaymentForm({ onGeneratePayment }: PaymentFormProps) {
               <span className="text-white font-medium">USDC</span>
             </div>
           </div>
+          {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
         </div>
         
         <div className="mb-7">
@@ -67,9 +98,17 @@ export function PaymentForm({ onGeneratePayment }: PaymentFormProps) {
         
         <Button 
           type="submit"
+          disabled={isProcessing}
           className="w-full h-14 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
         >
-          Generate Payment
+          {isProcessing ? (
+            <>
+              <Loader2 className="size-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Generate Payment"
+          )}
         </Button>
       </form>
     </div>

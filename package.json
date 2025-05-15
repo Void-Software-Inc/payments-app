@@ -9,8 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@account.tech/core": "0.1.18",
-    "@account.tech/payment": "0.1.1",
+    "@account.tech/core": "0.1.20",
+    "@account.tech/payment": "0.1.2",
     "@mysten/dapp-kit": "^0.16.2",
     "@mysten/sui": "^1.29.1",
     "@polymedia/suitcase-core": "^0.0.54",
@@ -20,6 +20,7 @@
     "@tanstack/react-query": "^5.75.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.508.0",
     "next": "15.3.2",
     "next-themes": "^0.4.6",
