@@ -246,6 +246,18 @@ export function usePaymentClient() {
     }
   };
 
+  const issuePayment = async (userAddr: string, accountId: string, tx: Transaction, description: string, coinType: string, amount: bigint) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      client.issuePayment(tx, description, coinType, amount);
+    } catch (error) {
+      console.error("Error issuing payment:", error);
+      throw error;
+    }
+  };
+
+  //====Intents====//
+
   return {
     initPaymentClient,
     refresh,
@@ -257,6 +269,7 @@ export function usePaymentClient() {
     getUserPaymentAccounts,
     modifyName,
     getPendingPayments,
-    getPaymentDetail
+    getPaymentDetail,
+    issuePayment
   };
 }

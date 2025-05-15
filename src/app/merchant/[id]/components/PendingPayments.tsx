@@ -7,6 +7,7 @@ import { CirclePlus } from "lucide-react"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { usePaymentClient, PendingPayment as ClientPendingPayment } from "@/hooks/usePaymentClient"
 import { usePaymentStore } from "@/store/usePaymentStore"
+import { formatSuiBalance } from "@/utils/formatters"
 
 interface PendingPaymentsProps {
   merchantId: string
@@ -62,11 +63,15 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
   // Format amount with currency symbol based on coinType
   const formatAmount = (amount: string, coinType: string): string => {
     try {
-      // Parse amount as a number
-      const numAmount = parseFloat(amount);
+      // Convert string amount to bigint
+      const amountInMist = BigInt(amount);
       
-      // Format with 2 decimal places
-      const formattedAmount = numAmount.toLocaleString(undefined, {
+      // Check if it's USDC (6 decimals) or SUI (9 decimals)
+      const isUSDC = coinType.toLowerCase().includes('usdc');
+      const decimals = isUSDC ? 6 : 9;
+      
+      // Format the amount based on decimals
+      const formattedAmount = (Number(amountInMist) / Math.pow(10, decimals)).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       });
@@ -122,7 +127,7 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
                 <div className="flex-1">
                   <div className="flex justify-between">
                     <div className="min-w-[170px] max-w-[170px] md:min-w-[250px] md:max-w-[250px]">
-                      <h3 className="text-md text-white truncate">Payment from {payment.sender || 'Unknown'}</h3>
+                      <h3 className="text-md text-white truncate">{payment.rawIntent?.fields?.description || payment.description || 'Payment'}</h3>
                       <p className="text-sm text-gray-400">{payment.date} - {payment.time}</p>
                     </div>
                     <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">

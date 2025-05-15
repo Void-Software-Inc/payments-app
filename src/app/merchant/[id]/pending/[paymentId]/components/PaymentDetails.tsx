@@ -7,6 +7,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Copy, Check } from "lucide-react"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { usePaymentClient, PendingPayment } from "@/hooks/usePaymentClient"
+import { usePaymentStore } from "@/store/usePaymentStore"
+import { formatSuiBalance } from "@/utils/formatters"
 
 interface PaymentDetailsProps {
   merchantId: string
@@ -17,6 +19,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
   const { getPaymentDetail } = usePaymentClient()
+  const { refreshTrigger } = usePaymentStore()
   
   const [payment, setPayment] = useState<PendingPayment | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -48,7 +51,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
     }
 
     fetchPaymentDetails()
-  }, [currentAccount?.address, merchantId, paymentId, getPaymentDetail])
+  }, [currentAccount?.address, merchantId, paymentId, refreshTrigger])
 
   const copyToClipboard = () => {
     if (payment?.intentKey) {
@@ -63,21 +66,25 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   // Format amount for display
   const formatAmount = (amount: string, coinType: string): string => {
     try {
-      // Parse amount as a number
-      const numAmount = parseFloat(amount)
+      // Convert string amount to bigint
+      const amountInMist = BigInt(amount);
       
-      // Format with 2 decimal places
-      const formattedAmount = numAmount.toLocaleString(undefined, {
+      // Check if it's USDC (6 decimals) or SUI (9 decimals)
+      const isUSDC = coinType.toLowerCase().includes('usdc');
+      const decimals = isUSDC ? 6 : 9;
+      
+      // Format the amount based on decimals
+      const formattedAmount = (Number(amountInMist) / Math.pow(10, decimals)).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-      })
+      });
       
-      // Extract coin symbol from coinType (e.g., "0x2::sui::SUI" -> "SUI")
-      const coinSymbol = coinType.split('::').pop() || 'COIN'
+      // Extract coin symbol from coinType
+      const coinSymbol = coinType.split('::').pop() || 'COIN';
       
-      return `${formattedAmount} ${coinSymbol}`
+      return `${formattedAmount} ${coinSymbol}`;
     } catch (e) {
-      return `${amount} UNKNOWN`
+      return `${amount} UNKNOWN`;
     }
   }
 
@@ -109,7 +116,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           <p className="text-md text-gray-400">Message</p>
         </div>
         <p className="text-white text-md mb-6">
-          {payment.description || `Payment from ${payment.sender}`}
+          {payment.rawIntent?.fields?.description || payment.description || 'Payment'}
         </p>
         
         <div className="flex items-center justify-between mb-1">
