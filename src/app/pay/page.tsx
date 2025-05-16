@@ -1,9 +1,7 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
-import { PaymentForm } from "./components/PaymentForm"
-import { AskPaymentActions } from "./components/AskPaymentActions"
-import { PageTitle } from "./components/PageTitle"
+
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
@@ -12,48 +10,34 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { Button } from "@/components/ui/button"
+import { AskPaymentActions } from "../merchant/[id]/ask-payment/components/AskPaymentActions"
+import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
+import { PayCard } from "./components/PayCard"
+import { formatSuiBalance, truncateMiddle } from "@/utils/formatters"
 
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
 
-export default function AskPaymentPage() {
+export default function PayPage() {
   const params = useParams()
   const router = useRouter()
-  const paymentAccountId = params.id as string // This is the payment account ID
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { initPaymentClient, issuePayment, getPaymentAccount, getUserPaymentAccounts } = usePaymentClient()
+  const { initPaymentClient, makePayment } = usePaymentClient()
   const { resetClient } = usePaymentStore()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
-  const [paymentAccount, setPaymentAccount] = useState<any>(null)
   const [pageError, setPageError] = useState<string | null>(null)
 
-  // Ensure client is initialized with the payment account ID
+  // Initialize client 
   useEffect(() => {
-    if (!currentAccount?.address || !paymentAccountId) return
+    if (!currentAccount?.address) return
     
     const initClient = async () => {
       try {
-        // First get all payment accounts to find the one with matching ID
-        const accounts = await getUserPaymentAccounts(currentAccount.address)
-        const matchingAccount = accounts.find(acc => acc.id === paymentAccountId)
-        
-        if (matchingAccount) {
-          setPaymentAccount(matchingAccount)
-        }
-        
-        // Initialize with both user address and payment account ID
-        await initPaymentClient(currentAccount.address, paymentAccountId)
-        
-        // Now fetch the full payment account details if needed
-        if (!matchingAccount) {
-          const account = await getPaymentAccount(currentAccount.address, paymentAccountId)
-          setPaymentAccount(account)
-        }
-        
-        setPageError(null)
+        // Initialize client with user's address
+        await initPaymentClient(currentAccount.address)
       } catch (error) {
         console.error("Error initializing payment client:", error)
         setPageError("Could not initialize payment client. Please try again.")
@@ -61,16 +45,16 @@ export default function AskPaymentPage() {
     }
     
     initClient()
-  }, [currentAccount?.address, paymentAccountId])
+  }, [currentAccount?.address, initPaymentClient])
 
-  const handleGeneratePayment = async (amount: string, message: string) => {
+  const handleMakePayment = async (paymentId: string, tip: bigint = BigInt(0)) => {
     if (!currentAccount?.address) {
       toast.error("Please connect your wallet first")
       return
     }
 
-    if (!paymentAccountId) {
-      toast.error("Payment account ID is missing")
+    if (!paymentId) {
+      toast.error("Payment ID is missing")
       return
     }
 
@@ -82,21 +66,18 @@ export default function AskPaymentPage() {
     try {
       setIsProcessing(true)
       
-      // Convert amount to bigint (USDC has 6 decimals)
-      const amountInSmallestUnit = BigInt(Math.floor(parseFloat(amount) * 1_000_000))
-      
       // Create a new transaction
       const tx = new Transaction()
-      // Note: We don't set gas budget here to let the wallet handle it
       
-      // Call issuePayment function with the payment account ID
-      await issuePayment(
+      // Set the sender address to resolve CoinWithBalance
+      tx.setSender(currentAccount.address)
+      
+      // Call makePayment
+      await makePayment(
         currentAccount.address,
-        paymentAccountId, // Using the payment account ID from the URL params
         tx,
-        message || "Payment request",
-        USDC_COIN_TYPE,
-        amountInSmallestUnit
+        paymentId,
+        tip
       )
       
       // Execute the transaction
@@ -122,41 +103,54 @@ export default function AskPaymentPage() {
         if (txResult.events && txResult.events.length > 0) {
           try {
             const paymentEvent = txResult.events.find((event: any) => 
-              event?.type?.includes('::payment_events::PaymentIssued')
+              event?.type?.includes('::payment_events::PaymentExecuted')
             );
             
             if (paymentEvent?.parsedJson) {
               const data = paymentEvent.parsedJson;
-              console.log("Payment issued:", {
-                paymentId: data.payment_id, 
-                amount: data.amount,
+              const paymentDetails = {
+                paymentId: data.payment_id,
+                timestamp: data.timestamp,
+                paidAmount: data.amount,
+                tipAmount: data.tip,
                 issuedBy: data.issued_by
-              });
+              };
               
-              // Store the payment ID for future reference if needed
-              const paymentId = data.payment_id;
-              toast.success(`Payment ID: ${paymentId.slice(0, 8)}...${paymentId.slice(-8)}`);
+              console.log("Payment executed:", paymentDetails);
+              
+              // Show success message with formatted amount
+              const formattedAmount = formatSuiBalance(BigInt(paymentDetails.paidAmount));
+              toast.success(`Paid ${formattedAmount} to ${truncateMiddle(paymentDetails.issuedBy)}`);
             }
           } catch (error) {
             console.warn("Error parsing payment events:", error);
           }
         }
         
-        // Reset client and trigger refresh for pending payments
+        // Reset client and trigger refresh
         resetClient();
         usePaymentStore.getState().triggerRefresh();
-        // Redirect to merchant dashboard or payment details page
-        setTimeout(() => router.push(`/merchant/${paymentAccountId}`), 1500)
+        
+        // Redirect to a success page or home
+        setTimeout(() => router.push('/'), 1500)
       }
       
     } catch (error: any) {
-      console.error("Error generating payment:", error)
+      console.error("Error making payment:", error)
       
-      // Check for Intent not registered error
-      if (error.message?.includes('Intent') && error.message?.includes('not registered')) {
-        toast.error("This feature is not available for this payment account. The payment intent is not registered.")
+      // Show appropriate error messages
+      if (error.message?.includes('Payment not found')) {
+        toast.error("Payment not found. Please check the payment ID and try again.")
+      } else if (error.message?.includes('expired')) {
+        toast.error("This payment request has expired.")
+      } else if (error.message?.includes('Insufficient balance')) {
+        toast.error("Insufficient funds. Please check your USDC balance.")
+      } else if (error.message?.includes('already paid')) {
+        toast.error("This payment has already been completed.")
+      } else if (error.message?.includes('transaction cost') || error.message?.includes('gas')) {
+        toast.error("Not enough SUI for gas fees.")
       } else {
-        toast.error("Failed to generate payment. Please try again.")
+        toast.error("Failed to process payment. Please try again.")
       }
     } finally {
       setIsProcessing(false)
@@ -168,7 +162,7 @@ export default function AskPaymentPage() {
       <div className="w-[90%] h-full pt-16 space-y-6">
         {/* Main Content */}
         <div className="flex items-center justify-between">
-          <PageTitle title={paymentAccount ? `Ask Payment - ${paymentAccount.name}` : "Ask Payment"} />
+          <PageTitle title="Pay" />
         </div>
         {pageError ? (
           <div className="bg-red-500/10 p-4 rounded-lg text-red-600 text-center">
@@ -181,7 +175,7 @@ export default function AskPaymentPage() {
             </Button>
           </div>
         ) : (
-          <PaymentForm onGeneratePayment={handleGeneratePayment} isProcessing={isProcessing} />
+          <PayCard onMakePayment={handleMakePayment} isProcessing={isProcessing} />
         )}
       </div>
 

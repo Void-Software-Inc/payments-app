@@ -1,9 +1,7 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
-import { PaymentForm } from "./components/PaymentForm"
-import { AskPaymentActions } from "./components/AskPaymentActions"
-import { PageTitle } from "./components/PageTitle"
+
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
@@ -12,6 +10,9 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { Button } from "@/components/ui/button"
+import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
+import { PaymentForm } from "../merchant/[id]/ask-payment/components/PaymentForm"
+import { AskPaymentActions } from "../merchant/[id]/ask-payment/components/AskPaymentActions"
 
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
@@ -87,7 +88,6 @@ export default function AskPaymentPage() {
       
       // Create a new transaction
       const tx = new Transaction()
-      // Note: We don't set gas budget here to let the wallet handle it
       
       // Call issuePayment function with the payment account ID
       await issuePayment(
@@ -117,31 +117,6 @@ export default function AskPaymentPage() {
       
       if (txResult) {
         handleTxResult(txResult, toast)
-        
-        // Extract payment details from events if available
-        if (txResult.events && txResult.events.length > 0) {
-          try {
-            const paymentEvent = txResult.events.find((event: any) => 
-              event?.type?.includes('::payment_events::PaymentIssued')
-            );
-            
-            if (paymentEvent?.parsedJson) {
-              const data = paymentEvent.parsedJson;
-              console.log("Payment issued:", {
-                paymentId: data.payment_id, 
-                amount: data.amount,
-                issuedBy: data.issued_by
-              });
-              
-              // Store the payment ID for future reference if needed
-              const paymentId = data.payment_id;
-              toast.success(`Payment ID: ${paymentId.slice(0, 8)}...${paymentId.slice(-8)}`);
-            }
-          } catch (error) {
-            console.warn("Error parsing payment events:", error);
-          }
-        }
-        
         // Reset client and trigger refresh for pending payments
         resetClient();
         usePaymentStore.getState().triggerRefresh();

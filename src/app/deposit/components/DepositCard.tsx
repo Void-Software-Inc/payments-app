@@ -46,13 +46,16 @@ export function DepositCard() {
         
         <p className="text-sm text-gray-400 mb-4">QR Code</p>
         <div className="flex justify-center">
-          <div className="border border-[#737779] rounded-lg p-10 inline-block">
-            <QRCodeSVG 
-              value={currentAccount.address} 
-              size={230}
-              bgColor="#2A2A2F"
-              fgColor="#FFFFFF"
-            />
+          <div className="border border-[#737779] rounded-lg p-6 md:p-10 inline-block">
+            <div className="w-[150px] h-[150px] sm:w-[180px] sm:h-[180px] md:w-[230px] md:h-[230px]">
+              <QRCodeSVG 
+                value={currentAccount.address} 
+                size={230}
+                bgColor="#2A2A2F"
+                fgColor="#FFFFFF"
+                className="w-full h-full"
+              />
+            </div>
           </div>
         </div>
       </CardContent>

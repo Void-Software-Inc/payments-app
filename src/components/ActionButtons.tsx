@@ -1,14 +1,30 @@
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import { ScanEye, Plus, CirclePlus, HandCoins } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export function ActionButtons() {
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
   const merchantId = params.id as string;
+  
+  // Check if we're in a merchant context
+  const isMerchantContext = pathname.startsWith('/merchant/');
 
-  const goToAskPayment = () => {
-    router.push(`/merchant/${merchantId}/ask-payment`);
+  const handlePaymentAsk = () => {
+    if (isMerchantContext) {
+      router.push(`/merchant/${merchantId}/ask-payment`);
+    } else {
+      router.push('/ask-payment');
+    }
+  };
+
+  const handlePay = () => {
+    if (isMerchantContext) {
+      router.push(`/merchant/${merchantId}/pay`);
+    } else {
+      router.push('/pay');
+    }
   };
 
   return (
@@ -16,15 +32,16 @@ export function ActionButtons() {
       <Button
         variant="outline"
         size="icon"
-        className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5B5F62] hover:bg-black/30"
+        className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5E6164] hover:bg-black/30"
+        onClick={handlePay}
       >
         <HandCoins className="size-7 text-white" />
       </Button>
       <Button
         variant="outline"
         size="icon"
-        className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5B5F62] hover:bg-black/30"
-        onClick={goToAskPayment}
+        className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5E6164] hover:bg-black/30"
+        onClick={handlePaymentAsk}
       >
         <CirclePlus className="size-6 text-white" />
       </Button>
