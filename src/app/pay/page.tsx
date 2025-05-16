@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { AskPaymentActions } from "../merchant/[id]/ask-payment/components/AskPaymentActions"
 import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
 import { PayCard } from "./components/PayCard"
+import { formatSuiBalance, truncateMiddle } from "@/utils/formatters"
 
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
@@ -21,15 +22,30 @@ export default function PayPage() {
   const params = useParams()
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
-  const [paymentId, setPaymentId] = useState("")
-  const [tipAmount, setTipAmount] = useState<bigint>(BigInt(0))
   
-  const { initPaymentClient, makePayment, getPaymentDetail } = usePaymentClient()
+  const { initPaymentClient, makePayment, getIntent } = usePaymentClient()
   const { resetClient } = usePaymentStore()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   const [pageError, setPageError] = useState<string | null>(null)
+
+  // Initialize client 
+  useEffect(() => {
+    if (!currentAccount?.address) return
+    
+    const initClient = async () => {
+      try {
+        // Initialize client with user's address
+        await initPaymentClient(currentAccount.address)
+      } catch (error) {
+        console.error("Error initializing payment client:", error)
+        setPageError("Could not initialize payment client. Please try again.")
+      }
+    }
+    
+    initClient()
+  }, [currentAccount?.address, initPaymentClient])
 
   const handleMakePayment = async (paymentId: string, tip: bigint = BigInt(0)) => {
     if (!currentAccount?.address) {
@@ -50,20 +66,19 @@ export default function PayPage() {
     try {
       setIsProcessing(true)
       
-      // Get payment details to find the payment account ID
-      const paymentDetail = await getPaymentDetail(currentAccount.address, "default", paymentId)
+      // Get the intent details directly to verify payment exists
+      const intent = await getIntent(currentAccount.address, paymentId)
       
-      if (!paymentDetail) {
+      if (!intent) {
         throw new Error("Payment not found")
       }
       
       // Create a new transaction
       const tx = new Transaction()
       
-      // Call makePayment function with the payment ID and tip amount
+      // Simplified: Call makePayment without the merchantAccountId
       await makePayment(
         currentAccount.address,
-        "default", // We're using the default payment account
         tx,
         paymentId,
         tip
@@ -97,13 +112,19 @@ export default function PayPage() {
             
             if (paymentEvent?.parsedJson) {
               const data = paymentEvent.parsedJson;
-              console.log("Payment executed:", {
+              const paymentDetails = {
                 paymentId: data.payment_id,
                 timestamp: data.timestamp,
                 paidAmount: data.amount,
                 tipAmount: data.tip,
                 issuedBy: data.issued_by
-              });
+              };
+              
+              console.log("Payment executed:", paymentDetails);
+              
+              // Show success message with formatted amount
+              const formattedAmount = formatSuiBalance(BigInt(paymentDetails.paidAmount));
+              toast.success(`Paid ${formattedAmount} to ${truncateMiddle(paymentDetails.issuedBy)}`);
             }
           } catch (error) {
             console.warn("Error parsing payment events:", error);
@@ -125,7 +146,13 @@ export default function PayPage() {
       if (error.message?.includes('Payment not found')) {
         toast.error("Payment not found. Please check the payment ID and try again.")
       } else if (error.message?.includes('expired')) {
-        toast.error("This payment request has expired. Payment intents are valid for 6 hours.")
+        toast.error("This payment request has expired.")
+      } else if (error.message?.includes('Insufficient balance')) {
+        toast.error("Insufficient funds. Please check your USDC balance.")
+      } else if (error.message?.includes('already paid')) {
+        toast.error("This payment has already been completed.")
+      } else if (error.message?.includes('transaction cost') || error.message?.includes('gas')) {
+        toast.error("Not enough SUI for gas fees.")
       } else {
         toast.error("Failed to process payment. Please try again.")
       }

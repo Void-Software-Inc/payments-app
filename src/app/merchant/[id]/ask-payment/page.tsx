@@ -87,6 +87,7 @@ export default function AskPaymentPage() {
       
       // Create a new transaction
       const tx = new Transaction()
+      // Note: We don't set gas budget here to let the wallet handle it
       
       // Call issuePayment function with the payment account ID
       await issuePayment(
@@ -116,6 +117,31 @@ export default function AskPaymentPage() {
       
       if (txResult) {
         handleTxResult(txResult, toast)
+        
+        // Extract payment details from events if available
+        if (txResult.events && txResult.events.length > 0) {
+          try {
+            const paymentEvent = txResult.events.find((event: any) => 
+              event?.type?.includes('::payment_events::PaymentIssued')
+            );
+            
+            if (paymentEvent?.parsedJson) {
+              const data = paymentEvent.parsedJson;
+              console.log("Payment issued:", {
+                paymentId: data.payment_id, 
+                amount: data.amount,
+                issuedBy: data.issued_by
+              });
+              
+              // Store the payment ID for future reference if needed
+              const paymentId = data.payment_id;
+              toast.success(`Payment ID: ${paymentId.slice(0, 8)}...${paymentId.slice(-8)}`);
+            }
+          } catch (error) {
+            console.warn("Error parsing payment events:", error);
+          }
+        }
+        
         // Reset client and trigger refresh for pending payments
         resetClient();
         usePaymentStore.getState().triggerRefresh();

@@ -246,6 +246,17 @@ export function usePaymentClient() {
     }
   };
 
+  // Get an intent directly by its ID
+  const getIntent = async (userAddr: string, intentId: string) => {
+    try {
+      const client = await getOrInitClient(userAddr);
+      return client.getIntent(intentId);
+    } catch (error) {
+      console.error("Error getting intent:", error);
+      return null;
+    }
+  };
+
     //====Intents====//
     
   const issuePayment = async (userAddr: string, accountId: string, tx: Transaction, description: string, coinType: string, amount: bigint) => {
@@ -258,9 +269,14 @@ export function usePaymentClient() {
     }
   };
 
-  const makePayment = async (userAddr: string, accountId: string, tx: Transaction, paymentId: string, tipAmount?: bigint) => {
+  const makePayment = async (
+    userAddr: string, 
+    tx: Transaction, 
+    paymentId: string, 
+    tipAmount?: bigint
+  ) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await getOrInitClient(userAddr);
       client.makePayment(tx, paymentId, tipAmount);
     } catch (error) {
       console.error("Error making payment:", error);
@@ -280,6 +296,7 @@ export function usePaymentClient() {
     modifyName,
     getPendingPayments,
     getPaymentDetail,
+    getIntent,
     issuePayment,
     makePayment
   };

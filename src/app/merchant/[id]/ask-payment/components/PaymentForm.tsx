@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardDescription } from "@/components/ui/card"
 import Image from "next/image"
-import { Loader2 } from "lucide-react"
+import { Loader2, HelpCircle } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface PaymentFormProps {
   onGeneratePayment: (amount: string, message: string) => void
@@ -54,10 +55,27 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false }: Payment
 
   return (
     <Card className="w-full h-fit bg-[#2A2A2F] p-0 border-none">
+      <CardHeader className="px-6 pt-6 pb-2">
+        <CardDescription className="text-zinc-400">
+          Generate a payment request that your customers can pay later. The payment request will create a unique payment ID that can be shared.
+        </CardDescription>
+      </CardHeader>
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-        <CardContent className="p-6">
+        <CardContent className="p-6 pt-2">
           <div className="mb-7">
-            <label htmlFor="amount" className="text-zinc-400 text-md mb-1 block">Amount</label>
+            <div className="flex items-center gap-2 mb-1">
+              <label htmlFor="amount" className="text-zinc-400 text-md block">Amount</label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle size={16} className="text-zinc-500" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm max-w-60">Enter the amount in USDC you want to request from your customer.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <div className="flex items-end">
               <input
                 id="amount"
@@ -86,7 +104,19 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false }: Payment
           </div>
           
           <div className="mb-7">
-            <label htmlFor="message" className="text-zinc-400 text-md mb-3 block">Message</label>
+            <div className="flex items-center gap-2 mb-3">
+              <label htmlFor="message" className="text-zinc-400 text-md block">Message</label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle size={16} className="text-zinc-500" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm max-w-60">Add a description of what this payment is for. This will be visible to your customer.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="message"
               value={message}
