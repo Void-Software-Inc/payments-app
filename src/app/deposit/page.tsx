@@ -28,7 +28,7 @@ export default function DepositPage() {
         <h1 className="text-2xl font-bold text-white">Deposit</h1>
       </div>
       
-      <div className="py-4">
+      <div className="">
         <DepositCard />
         <FiatButton />
       </div>
