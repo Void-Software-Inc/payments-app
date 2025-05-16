@@ -240,7 +240,7 @@ export function WithdrawForm() {
   return (
     <div>
         <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="space-y-6 mt-1 mb-3">
         
             
             {/* Amount Input */}
