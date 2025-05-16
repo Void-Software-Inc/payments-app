@@ -23,7 +23,7 @@ export default function PayPage() {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { initPaymentClient, makePayment, getIntent } = usePaymentClient()
+  const { initPaymentClient, makePayment } = usePaymentClient()
   const { resetClient } = usePaymentStore()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
@@ -66,17 +66,13 @@ export default function PayPage() {
     try {
       setIsProcessing(true)
       
-      // Get the intent details directly to verify payment exists
-      const intent = await getIntent(currentAccount.address, paymentId)
-      
-      if (!intent) {
-        throw new Error("Payment not found")
-      }
-      
       // Create a new transaction
       const tx = new Transaction()
       
-      // Simplified: Call makePayment without the merchantAccountId
+      // Set the sender address to resolve CoinWithBalance
+      tx.setSender(currentAccount.address)
+      
+      // Call makePayment
       await makePayment(
         currentAccount.address,
         tx,

@@ -54,10 +54,8 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   }, [currentAccount?.address, merchantId, paymentId, refreshTrigger])
 
   const copyToClipboard = () => {
-    if (payment?.intentKey) {
-      const baseUrl = window.location.origin
-      const paymentUrl = `${baseUrl}/merchant/${merchantId}/pending/${payment.id}`
-      navigator.clipboard.writeText(paymentUrl)
+    if (payment?.rawIntent?.fields?.key) {
+      navigator.clipboard.writeText(payment.rawIntent.fields.key)
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     }
@@ -153,7 +151,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           </button>
         </div>
         <p className="text-[#78BCDB] font-mono text-sm break-all mb-6">
-          {payment.intentKey}
+          {payment.rawIntent?.fields?.key || "No key available"}
         </p>
         
         <p className="text-md text-gray-400 mb-4">QR Code</p>
