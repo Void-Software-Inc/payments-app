@@ -246,6 +246,8 @@ export function usePaymentClient() {
     }
   };
 
+    //====Intents====//
+    
   const issuePayment = async (userAddr: string, accountId: string, tx: Transaction, description: string, coinType: string, amount: bigint) => {
     try {
       const client = await getOrInitClient(userAddr, accountId);
@@ -256,7 +258,15 @@ export function usePaymentClient() {
     }
   };
 
-  //====Intents====//
+  const makePayment = async (userAddr: string, accountId: string, tx: Transaction, paymentId: string, tipAmount?: bigint) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      client.makePayment(tx, paymentId, tipAmount);
+    } catch (error) {
+      console.error("Error making payment:", error);
+      throw error;
+    }
+  };
 
   return {
     initPaymentClient,
@@ -270,6 +280,7 @@ export function usePaymentClient() {
     modifyName,
     getPendingPayments,
     getPaymentDetail,
-    issuePayment
+    issuePayment,
+    makePayment
   };
 }
