@@ -23,7 +23,7 @@ export default function DepositPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 max-w-md">
+    <div className="container mx-auto px-4 max-w-md h-dvh w-dvw">
       <div className="flex justify-center items-center w-full mb-6 pt-5">
         <h1 className="text-2xl font-bold text-white">Deposit</h1>
       </div>

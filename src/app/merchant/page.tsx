@@ -33,7 +33,7 @@ export default function MerchantPage() {
   }, []);
   
   return (
-    <main className="container mx-auto px-4 mt-20 pb-8 max-w-2xl">
+    <main className="w-dvw h-dvh container mx-auto px-4 mt-20 pb-8 max-w-2xl">
       <Toaster position="bottom-center" richColors closeButton />
       <MerchantHeader />
       <PaymentAccountsList />

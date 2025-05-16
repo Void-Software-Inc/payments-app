@@ -127,7 +127,7 @@ export default function ChangeShopNamePage() {
   // If fetching data, show loading
   if (isFetching) {
     return (
-      <div className="container mx-auto px-4 max-w-md pt-10">
+      <div className="w-dvw h-dvh container mx-auto px-4 max-w-md pt-10">
         <div className="flex justify-center py-10">
           <div className="animate-pulse">Loading...</div>
         </div>
@@ -136,7 +136,7 @@ export default function ChangeShopNamePage() {
   }
 
   return (
-    <div className="w-full h-dvh container mx-auto px-4 max-w-md pt-6 flex justify-center">
+    <div className="w-dvw h-dvh container mx-auto px-4 max-w-md pt-6 flex justify-center">
       <div className="w-[90%] h-full">
         <div className="mb-6 flex justify-center">  
           <h1 className="text-2xl font-bold text-white">Shop Name</h1>

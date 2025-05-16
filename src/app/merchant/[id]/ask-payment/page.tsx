@@ -138,18 +138,11 @@ export default function AskPaymentPage() {
   }
 
   return (
-    <div className="h-full w-full flex justify-center items-center">
+    <div className="h-dvh w-dvw flex justify-center items-center">
       <div className="w-[90%] h-full pt-16 space-y-6">
         {/* Main Content */}
         <div className="flex items-center justify-between">
           <PageTitle title={paymentAccount ? `Ask Payment - ${paymentAccount.name}` : "Ask Payment"} />
-          <Button 
-            onClick={() => router.push(`/merchant/${paymentAccountId}`)}
-            variant="ghost"
-            className="text-zinc-400 hover:text-white"
-          >
-            Back to Account
-          </Button>
         </div>
         {pageError ? (
           <div className="bg-red-500/10 p-4 rounded-lg text-red-600 text-center">
