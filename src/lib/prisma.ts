@@ -47,12 +47,23 @@ export const prisma = globalForPrisma.prisma || (() => {
     config.log = ['query', 'info', 'warn', 'error'];
   }
   
-  // Add pgbouncer flag for connection pooling
-  config.datasources = {
-    db: {
-      url: process.env.DATABASE_URL + '?pgbouncer=true'
-    }
-  };
+  // Configure database connection based on environment
+  // Note: In production with Supabase, the connection needs special configuration
+  if (process.env.NODE_ENV === 'production') {
+    // Production configuration for Supabase
+    config.datasources = {
+      db: {
+        url: process.env.DATABASE_URL_WITH_SCHEMA || process.env.DATABASE_URL
+      }
+    };
+  } else {
+    // Development configuration (local or non-pooled)
+    config.datasources = {
+      db: {
+        url: process.env.DATABASE_URL_WITH_SCHEMA || process.env.DATABASE_URL
+      }
+    };
+  }
   
   const instance = new PrismaClient(config);
   console.log("PrismaClient instance created for database");

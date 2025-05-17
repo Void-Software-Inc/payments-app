@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "test-db": "node test-db.js",
-    "test-insert": "node test-insert-db.js"
+    "test-insert": "node test-insert-db.js",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@account.tech/core": "0.1.20",
