@@ -209,7 +209,7 @@ export default function PayPage() {
                 paymentId: data.payment_id,
                 timestamp: data.timestamp,
                 paidAmount: data.amount,
-                tipAmount: data.tip || '0',
+                tipAmount: data.tip || tip.toString() || '0',
                 issuedBy: data.issued_by
               };
               

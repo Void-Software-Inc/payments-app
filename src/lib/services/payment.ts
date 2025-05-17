@@ -45,11 +45,9 @@ export const PaymentService = {
       
       if (coinType.includes('::usdc::USDC')) {
         try {
-          const amountNum = BigInt(paidAmount.toString());
-          formattedPaidAmount = (Number(amountNum) / 1000000).toString();
-          
-          const tipNum = BigInt(tipAmount.toString());
-          formattedTipAmount = (Number(tipNum) / 1000000).toString();
+          // Convert to number before division to ensure proper decimal representation
+          formattedPaidAmount = (Number(paidAmount.toString()) / 1000000).toString();
+          formattedTipAmount = (Number(tipAmount.toString()) / 1000000).toString();
         } catch (e) {
           console.warn("PaymentService: Failed to format USDC amount", e);
         }

@@ -36,8 +36,8 @@ function validatePaymentData(body: any) {
 function formatCryptoAmount(amount: string, coinType: string) {
   if (coinType.includes('::usdc::USDC')) {
     try {
-      const amountNum = BigInt(amount);
-      return (Number(amountNum) / 1000000).toString();
+      // Convert directly to number for proper decimal division
+      return (Number(amount) / 1000000).toString();
     } catch (e) {
       console.warn("Failed to format USDC amount:", e);
     }
@@ -81,9 +81,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Format amounts if needed
-    const formattedPaidAmount = body.paidAmount || '0';
-    const formattedTipAmount = body.tipAmount || '0';
+    // Format amounts using the proper conversion for USDC
+    const formattedPaidAmount = formatCryptoAmount(body.paidAmount || '0', body.coinType || '');
+    const formattedTipAmount = formatCryptoAmount(body.tipAmount || '0', body.coinType || '');
     
     // Create data with ID generated here
     const paymentData = {
