@@ -1,31 +1,27 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL_WITH_SCHEMA") // Use in production
-  directUrl = env("DIRECT_URL_WITH_SCHEMA") // Required for migrations
+  provider  = "postgresql"
+  url       = env("DATABASE_URL_WITH_SCHEMA")
+  directUrl = env("DIRECT_URL_WITH_SCHEMA")
 }
 
-// Store completed payment transactions
 model CompletedPayment {
   id              String   @id @default(cuid())
-  paymentId       String   @unique // The original payment intent ID
-  paidAmount      String   // Amount paid
-  tipAmount       String   // Tip amount
-  issuedBy        String   // Original creator of the payment intent
-  paidBy          String   // Address of the wallet that paid
-  coinType        String   // Type of coin used for payment
-  description     String?  // Description of the payment
-  transactionHash String   // SUI transaction hash for reference
+  paymentId       String   @unique
+  paidAmount      String
+  tipAmount       String
+  issuedBy        String
+  paidBy          String
+  coinType        String
+  description     String?
+  transactionHash String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([paymentId])
   @@index([paidBy])
   @@index([issuedBy])
-} 
+}
