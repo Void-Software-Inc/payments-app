@@ -85,6 +85,9 @@ export default function AskPaymentPage() {
       // Convert amount to bigint (USDC has 6 decimals)
       const amountInSmallestUnit = BigInt(Math.floor(parseFloat(amount) * 1_000_000))
       
+      // Log the amount for debugging purposes
+      console.log("Issuing payment with amount:", amount, "converted to smallest unit:", amountInSmallestUnit.toString())
+      
       // Create a new transaction
       const tx = new Transaction()
       // Note: We don't set gas budget here to let the wallet handle it

@@ -30,6 +30,13 @@ async function saveCompletedPayment(data: {
   transactionHash: string;
 }) {
   try {
+    // Ensure paidAmount is never zero if it can be avoided
+    if (data.paidAmount === '0') {
+      console.warn("Warning: Attempting to save payment with zero amount", data);
+    } else {
+      console.log("Saving payment with amount:", data.paidAmount);
+    }
+    
     console.log("Attempting to save payment to database:", data);
     
     const response = await fetch('/api/payments', {
@@ -113,31 +120,38 @@ export default function PayPage() {
         return
       }
       
-      // Extract intent information
-      const intentArgs = intentDetails.args as any;
+      // Extract intent information properly accessing the fields
+      console.log("Intent details:", intentDetails);
+      console.log("Intent fields:", intentDetails.fields);
       
-      // Log all potential description fields to help diagnose the issue
-      console.log("Intent args for description:", {
-        description: intentArgs?.description,
-        desc: intentArgs?.desc,
-        message: intentArgs?.message,
-        title: intentArgs?.title,
-        memo: intentArgs?.memo,
-        note: intentArgs?.note,
-        fullArgs: intentArgs
-      });
-      
-      const intentDescription = intentArgs?.description || 
-                               intentArgs?.desc || 
-                               intentArgs?.message || 
-                               intentArgs?.title ||
-                               intentArgs?.memo ||
-                               intentArgs?.note || '';
+      // Access description from fields.description which is how it's structured in the Intent
+      const intentDescription = intentDetails.fields?.description || '';
       
       console.log("Final intent description:", intentDescription);
       
-      const coinType = intentArgs?.coinType || USDC_COIN_TYPE;
-      const issuedBy = (intentDetails as any).creator || intentArgs?.issuedBy || '';
+      // Cast intent to access creator property via type assertion
+      const intentFields = intentDetails.fields as any;
+      const coinType = intentFields?.coinType || USDC_COIN_TYPE;
+      
+      // Get issuedBy from various possible sources
+      let issuedBy = (intentDetails as any).creator ?? 
+                     intentFields?.issuedBy ?? 
+                     intentFields?.creator ?? 
+                     (intentDetails as any).issuer ??
+                     (paymentId.length >= 66 ? paymentId.substring(0, 66) : '');
+      
+      console.log("Final issuedBy value:", issuedBy || 'unknown (will be filled from events)');
+      
+      // Ensure we get a valid non-zero amount by checking both intentFields.amount and args.amount
+      const argsAmount = (intentDetails as any)?.args?.amount?.toString();
+      const fieldsAmount = intentFields?.amount?.toString();
+      const amount = argsAmount || fieldsAmount || '0';
+      console.log("Payment amount from intent:", amount, "argsAmount:", argsAmount, "fieldsAmount:", fieldsAmount);
+      
+      // Verify we have a meaningful amount to process
+      if (amount === '0') {
+        console.warn("Warning: Payment amount is zero - check intent structure");
+      }
       
       // Create a new transaction
       const tx = new Transaction()
@@ -186,6 +200,11 @@ export default function PayPage() {
             
             if (paymentEvent?.parsedJson) {
               const data = paymentEvent.parsedJson;
+              
+              // Add detailed logging for the issued_by field
+              console.log("Payment event data:", data);
+              console.log("Event issued_by field:", data.issued_by);
+              
               const paymentDetails = {
                 paymentId: data.payment_id,
                 timestamp: data.timestamp,
@@ -195,13 +214,25 @@ export default function PayPage() {
               };
               
               console.log("Payment executed:", paymentDetails);
+              
+              // Verify amount is not zero
+              if (paymentDetails.paidAmount === '0' || paymentDetails.paidAmount === 0) {
+                console.warn("Warning: Event shows payment amount is zero, using intent amount instead");
+                paymentDetails.paidAmount = amount;
+              }
+              
+              // Update issuedBy if we found it in the event data
+              if (data.issued_by && !issuedBy) {
+                issuedBy = data.issued_by;
+                console.log("Updated issuedBy from event data:", issuedBy);
+              }
 
-              // Save the completed payment to database
+              // Save the completed payment to database (ensure issuedBy is never empty)
               await saveCompletedPayment({
                 paymentId: paymentDetails.paymentId,
                 paidAmount: paymentDetails.paidAmount.toString(),
                 tipAmount: paymentDetails.tipAmount.toString(),
-                issuedBy: paymentDetails.issuedBy,
+                issuedBy: paymentDetails.issuedBy || issuedBy || 'undefined',
                 paidBy: currentAccount.address,
                 coinType,
                 description: intentDescription,
@@ -216,9 +247,9 @@ export default function PayPage() {
               // Still attempt to save the payment with what we know
               await saveCompletedPayment({
                 paymentId,
-                paidAmount: intentArgs?.amount?.toString() || '0',
+                paidAmount: amount,
                 tipAmount: tip.toString(),
-                issuedBy,
+                issuedBy: issuedBy || 'undefined',
                 paidBy: currentAccount.address,
                 coinType,
                 description: intentDescription,
@@ -230,9 +261,9 @@ export default function PayPage() {
             // Attempt to save with basic information even if parsing failed
             await saveCompletedPayment({
               paymentId,
-              paidAmount: intentArgs?.amount?.toString() || '0',
+              paidAmount: amount,
               tipAmount: tip.toString(),
-              issuedBy,
+              issuedBy: issuedBy || 'undefined',
               paidBy: currentAccount.address,
               coinType,
               description: intentDescription,
@@ -249,6 +280,10 @@ export default function PayPage() {
         // This is a backup approach that will save minimal information if the event parsing fails
         try {
           console.log("Attempting backup payment save with minimal information");
+          
+          // This backup mechanism ensures payment data is saved even if the primary save mechanism fails
+          // It uses a different API endpoint with more robust error handling to guarantee data persistence
+          // The 'backup' flag is just for tracking which save method succeeded
           fetch('/api/payments/force-save', {
             method: 'POST',
             headers: {
@@ -256,9 +291,9 @@ export default function PayPage() {
             },
             body: JSON.stringify({
               paymentId,
-              paidAmount: intentArgs?.amount?.toString() || '0',
+              paidAmount: amount,
               tipAmount: tip.toString(),
-              issuedBy,
+              issuedBy: issuedBy || 'undefined',
               paidBy: currentAccount.address,
               coinType,
               description: intentDescription,

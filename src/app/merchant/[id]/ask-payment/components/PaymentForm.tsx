@@ -50,7 +50,9 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false }: Payment
       return
     }
     
-    onGeneratePayment(amount, message)
+    // Ensure amount is properly formatted as a valid number string
+    const numericAmount = parseFloat(amount).toString();
+    onGeneratePayment(numericAmount, message)
   }
 
   return (
@@ -77,14 +79,15 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false }: Payment
               </TooltipProvider>
             </div>
             <div className="flex items-end">
-              <input
+              <Input
                 id="amount"
                 type="text"
                 value={amount}
                 onChange={handleAmountChange}
                 placeholder="0.00"
-                className="text-5xl font-semibold text-white bg-transparent border-none outline-none w-full p-0"
+                className="text-5xl font-semibold text-white bg-transparent border-none outline-none w-full p-0 h-auto shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 aria-label="Payment amount in USDC"
+                autoComplete="off"
               />
               <div className="flex items-center gap-1 ml-2 mb-1">
                 <div className="w-5 h-5 relative">
