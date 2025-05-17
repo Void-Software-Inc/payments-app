@@ -33,6 +33,13 @@ try {
 
 const globalForPrisma = global as unknown as { prisma: any }
 
+// Clear existing connection if exists in development
+if (process.env.NODE_ENV === 'development' && globalForPrisma.prisma) {
+  console.log('Disconnecting existing Prisma client...');
+  globalForPrisma.prisma.$disconnect();
+  globalForPrisma.prisma = undefined;
+}
+
 // Use existing instance or create new one
 export const prisma = globalForPrisma.prisma || (() => {
   console.log("Creating new PrismaClient instance");
@@ -49,19 +56,26 @@ export const prisma = globalForPrisma.prisma || (() => {
   
   try {
     // For Supabase, connection string needs specific format
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      console.error("DATABASE_URL environment variable is not set!");
+    const databaseUrl = process.env.NODE_ENV === 'development' 
+      ? process.env.DIRECT_URL_WITH_SCHEMA || process.env.DIRECT_URL
+      : process.env.DATABASE_URL_WITH_SCHEMA || process.env.DATABASE_URL;
+      
+    if (!databaseUrl) {
+      console.error("Database URL environment variable is not set!");
     } else {
-      console.log(`Database URL detected (length: ${url.length})`);
+      console.log(`Database URL detected (length: ${databaseUrl.length})`);
 
-      // Initialize database connection without any additional parameters
-      // This is more stable with Supabase
+      // Initialize database connection with proper configuration
       config.datasources = {
         db: {
-          url: url
+          url: databaseUrl
         }
       };
+      
+      // Add necessary connection options
+      if (process.env.POSTGRES_SSL === 'true') {
+        console.log('Using SSL for database connection');
+      }
     }
     
     console.log("Creating Prisma client with config:", JSON.stringify({
@@ -83,6 +97,14 @@ if (process.env.NODE_ENV !== 'production') {
   console.log("Attached PrismaClient to global object");
 }
 
+// Add cleanup handler for development
+if (process.env.NODE_ENV === 'development') {
+  process.on('SIGINT', async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+}
+
 // Test if Prisma client is working
 if (prisma.completedPayment) {
   console.log("CompletedPayment model available in Prisma client");
@@ -90,4 +112,4 @@ if (prisma.completedPayment) {
   console.error("CompletedPayment model NOT available in Prisma client!");
 }
 
-export default prisma 
+export default prisma

@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "test-db": "node test-db.js",
     "test-insert": "node test-insert-db.js",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "reset-db": "node scripts/reset-db-connections.js"
   },
   "dependencies": {
     "@account.tech/core": "0.1.20",
