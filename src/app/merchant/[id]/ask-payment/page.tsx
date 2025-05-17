@@ -148,8 +148,8 @@ export default function AskPaymentPage() {
         // Reset client and trigger refresh for pending payments
         resetClient();
         usePaymentStore.getState().triggerRefresh();
-        // Redirect to merchant dashboard or payment details page
-        setTimeout(() => router.push(`/merchant/${paymentAccountId}`), 1500)
+        // Redirect to pending payments page
+        setTimeout(() => router.push(`/merchant/${paymentAccountId}/pending`), 1500)
       }
       
     } catch (error: any) {
