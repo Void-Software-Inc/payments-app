@@ -19,8 +19,9 @@ function validatePaymentData(body: any) {
     return { valid: false, error: 'Invalid payer wallet address' };
   }
   
-  if (!body.issuedBy || typeof body.issuedBy !== 'string' || !body.issuedBy.startsWith('0x')) {
-    return { valid: false, error: 'Invalid issuer wallet address' };
+  // Check issuedBy but be more lenient (may come from different sources)
+  if (!body.issuedBy || typeof body.issuedBy !== 'string') {
+    return { valid: false, error: 'Missing issuer address' };
   }
   
   // 3. Validate transaction hash format (should be base58 string)

@@ -133,11 +133,10 @@ export default function PayPage() {
       const intentFields = intentDetails.fields as any;
       const coinType = intentFields?.coinType || USDC_COIN_TYPE;
       
-      // Get issuedBy from various possible sources
-      let issuedBy = (intentDetails as any).creator ?? 
-                     intentFields?.issuedBy ?? 
-                     intentFields?.creator ?? 
-                     (intentDetails as any).issuer ??
+      // Get issuedBy from the correct fields: account is the primary source for issuedBy
+      let issuedBy = intentDetails.account || 
+                     (intentDetails as any).accountId ||
+                     intentFields?.issuedBy || 
                      (paymentId.length >= 66 ? paymentId.substring(0, 66) : '');
       
       console.log("Final issuedBy value:", issuedBy || 'unknown (will be filled from events)');
@@ -210,7 +209,7 @@ export default function PayPage() {
                 timestamp: data.timestamp,
                 paidAmount: data.amount,
                 tipAmount: data.tip || tip.toString() || '0',
-                issuedBy: data.issued_by
+                issuedBy: data.issued_by || issuedBy
               };
               
               console.log("Payment executed:", paymentDetails);
@@ -221,13 +220,7 @@ export default function PayPage() {
                 paymentDetails.paidAmount = amount;
               }
               
-              // Update issuedBy if we found it in the event data
-              if (data.issued_by && !issuedBy) {
-                issuedBy = data.issued_by;
-                console.log("Updated issuedBy from event data:", issuedBy);
-              }
-
-              // Save the completed payment to database (ensure issuedBy is never empty)
+              // Use the correct issuedBy value in completed payment
               await saveCompletedPayment({
                 paymentId: paymentDetails.paymentId,
                 paidAmount: paymentDetails.paidAmount.toString(),

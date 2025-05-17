@@ -133,7 +133,7 @@ export default function AskPaymentPage() {
               console.log("Payment issued:", {
                 paymentId: data.payment_id, 
                 amount: data.amount,
-                issuedBy: data.issued_by
+                issuedBy: data.issued_by || currentAccount.address // Fallback to current account address
               });
               
               // Store the payment ID for future reference if needed
