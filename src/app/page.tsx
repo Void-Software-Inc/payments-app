@@ -3,7 +3,7 @@ import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { BalanceCard } from "@/components/BalanceCard";
-import { ActionButtons } from '@/components/ActionButtons';
+import { ActionButtonsCustomer } from '@/components/ActionButtonsCustomer';
 
 export default function Home() {
   const currentAccount = useCurrentAccount();
@@ -30,7 +30,7 @@ export default function Home() {
         
         {/* Additional components can be added here later */}
       </div>
-      <ActionButtons />
+      <ActionButtonsCustomer />
     </main>
   );
 }

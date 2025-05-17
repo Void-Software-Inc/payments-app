@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from "next/navigation"
 import { PaymentForm } from "./components/PaymentForm"
-import { AskPaymentActions } from "./components/AskPaymentActions"
 import { PageTitle } from "./components/PageTitle"
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
@@ -12,6 +11,7 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { Button } from "@/components/ui/button"
+import { ActionButtonsMerchant } from "../../components/ActionButtonsMerchant"
 
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
@@ -189,7 +189,7 @@ export default function AskPaymentPage() {
       </div>
 
       {/* Action Buttons */}
-      <AskPaymentActions isProcessing={isProcessing} />
+      <ActionButtonsMerchant />
     </div>
   )
 } 

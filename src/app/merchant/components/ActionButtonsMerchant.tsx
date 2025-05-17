@@ -2,29 +2,22 @@ import { useRouter, useParams, usePathname } from 'next/navigation';
 import { ScanEye, Plus, CirclePlus, HandCoins } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
-export function ActionButtons() {
+export function ActionButtonsMerchant() {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
   const merchantId = params.id as string;
   
-  // Check if we're in a merchant context
-  const isMerchantContext = pathname.startsWith('/merchant/');
+  // Check current page to disable buttons appropriately
+  const isAskPaymentPage = pathname.includes('/ask-payment');
+  const isPayPage = pathname.includes('/pay');
 
   const handlePaymentAsk = () => {
-    if (isMerchantContext) {
-      router.push(`/merchant/${merchantId}/ask-payment`);
-    } else {
-      router.push('/ask-payment');
-    }
+    router.push(`/merchant/${merchantId}/ask-payment`);
   };
 
   const handlePay = () => {
-    if (isMerchantContext) {
-      router.push(`/merchant/${merchantId}/pay`);
-    } else {
-      router.push('/pay');
-    }
+    router.push(`/merchant/${merchantId}/pay`);
   };
 
   return (
@@ -34,6 +27,7 @@ export function ActionButtons() {
         size="icon"
         className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5E6164] hover:bg-black/30"
         onClick={handlePay}
+        disabled={isPayPage}
       >
         <HandCoins className="size-7 text-white" />
       </Button>
@@ -42,6 +36,7 @@ export function ActionButtons() {
         size="icon"
         className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5E6164] hover:bg-black/30"
         onClick={handlePaymentAsk}
+        disabled={isAskPaymentPage}
       >
         <CirclePlus className="size-6 text-white" />
       </Button>

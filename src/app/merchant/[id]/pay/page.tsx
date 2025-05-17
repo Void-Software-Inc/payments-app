@@ -10,11 +10,10 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { Button } from "@/components/ui/button"
-import { AskPaymentActions } from "../merchant/[id]/ask-payment/components/AskPaymentActions"
-import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
-import { PayCard } from "./components/PayCard"
+import { PageTitle } from "../ask-payment/components/PageTitle"
+import { PayCard } from "../../../pay/components/PayCard"
 import { formatSuiBalance, truncateMiddle } from "@/utils/formatters"
-import { ActionButtonsCustomer } from "@/components/ActionButtonsCustomer"
+import { ActionButtonsMerchant } from "../../components/ActionButtonsMerchant"
 
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
@@ -63,9 +62,10 @@ async function saveCompletedPayment(data: {
   }
 }
 
-export default function PayPage() {
+export default function MerchantPayPage() {
   const params = useParams()
   const router = useRouter()
+  const merchantId = params.id as string
   const [isProcessing, setIsProcessing] = useState(false)
   
   const { initPaymentClient, makePayment, getIntent } = usePaymentClient()
@@ -111,8 +111,7 @@ export default function PayPage() {
     try {
       setIsProcessing(true)
       
-      // Get the intent details BEFORE processing the payment
-      // This is critical because after the payment is processed, the intent may be removed
+      // Get the intent details
       const intentDetails = await getIntent(currentAccount.address, paymentId);
       
       if (!intentDetails) {
@@ -121,42 +120,31 @@ export default function PayPage() {
         return
       }
       
-      // Extract intent information properly accessing the fields
+      // Extract intent information
       console.log("Intent details:", intentDetails);
-      console.log("Intent fields:", intentDetails.fields);
       
-      // Access description from fields.description which is how it's structured in the Intent
+      // Access description from fields
       const intentDescription = intentDetails.fields?.description || '';
       
-      console.log("Final intent description:", intentDescription);
-      
-      // Cast intent to access creator property via type assertion
+      // Cast intent to access fields
       const intentFields = intentDetails.fields as any;
       const coinType = intentFields?.coinType || USDC_COIN_TYPE;
       
-      // Get issuedBy from the correct fields: account is the primary source for issuedBy
+      // Get issuedBy from the correct fields
       let issuedBy = intentDetails.account || 
                      (intentDetails as any).accountId ||
                      intentFields?.issuedBy || 
                      (paymentId.length >= 66 ? paymentId.substring(0, 66) : '');
       
-      console.log("Final issuedBy value:", issuedBy || 'unknown (will be filled from events)');
-      
-      // Ensure we get a valid non-zero amount by checking both intentFields.amount and args.amount
+      // Get amount
       const argsAmount = (intentDetails as any)?.args?.amount?.toString();
       const fieldsAmount = intentFields?.amount?.toString();
       const amount = argsAmount || fieldsAmount || '0';
-      console.log("Payment amount from intent:", amount, "argsAmount:", argsAmount, "fieldsAmount:", fieldsAmount);
-      
-      // Verify we have a meaningful amount to process
-      if (amount === '0') {
-        console.warn("Warning: Payment amount is zero - check intent structure");
-      }
       
       // Create a new transaction
       const tx = new Transaction()
       
-      // Set the sender address to resolve CoinWithBalance
+      // Set the sender address
       tx.setSender(currentAccount.address)
       
       // Call makePayment
@@ -175,7 +163,6 @@ export default function PayPage() {
         signTransaction,
         toast
       }).catch(err => {
-        // Handle user rejection of transaction
         if (err.message?.includes('User rejected')) {
           toast.error("Transaction canceled by user")
           return null
@@ -186,24 +173,15 @@ export default function PayPage() {
       if (txResult) {
         handleTxResult(txResult, toast)
         
-        // Extract payment details from events if available
+        // Extract payment details from events
         if (txResult.events && txResult.events.length > 0) {
-          console.log("Transaction events:", JSON.stringify(txResult.events));
-          
           try {
             const paymentEvent = txResult.events.find((event: any) => 
               event?.type?.includes('::payment_events::PaymentExecuted')
             );
             
-            console.log("Found payment event:", paymentEvent ? "YES" : "NO", 
-              paymentEvent ? JSON.stringify(paymentEvent) : "");
-            
             if (paymentEvent?.parsedJson) {
               const data = paymentEvent.parsedJson;
-              
-              // Add detailed logging for the issued_by field
-              console.log("Payment event data:", data);
-              console.log("Event issued_by field:", data.issued_by);
               
               const paymentDetails = {
                 paymentId: data.payment_id,
@@ -213,15 +191,12 @@ export default function PayPage() {
                 issuedBy: data.issued_by || issuedBy
               };
               
-              console.log("Payment executed:", paymentDetails);
-              
               // Verify amount is not zero
               if (paymentDetails.paidAmount === '0' || paymentDetails.paidAmount === 0) {
-                console.warn("Warning: Event shows payment amount is zero, using intent amount instead");
                 paymentDetails.paidAmount = amount;
               }
               
-              // Use the correct issuedBy value in completed payment
+              // Save payment details
               await saveCompletedPayment({
                 paymentId: paymentDetails.paymentId,
                 paidAmount: paymentDetails.paidAmount.toString(),
@@ -233,12 +208,11 @@ export default function PayPage() {
                 transactionHash: txResult.digest,
               });
               
-              // Show success message with formatted amount
+              // Show success message
               const formattedAmount = formatSuiBalance(BigInt(paymentDetails.paidAmount));
               toast.success(`Paid ${formattedAmount} to ${truncateMiddle(paymentDetails.issuedBy)}`);
             } else {
-              // Fallback if we couldn't extract details from the event
-              // Still attempt to save the payment with what we know
+              // Fallback if event parsing failed
               await saveCompletedPayment({
                 paymentId,
                 paidAmount: amount,
@@ -252,63 +226,12 @@ export default function PayPage() {
             }
           } catch (error) {
             console.warn("Error parsing payment events:", error);
-            // Attempt to save with basic information even if parsing failed
-            await saveCompletedPayment({
-              paymentId,
-              paidAmount: amount,
-              tipAmount: tip.toString(),
-              issuedBy: issuedBy || 'undefined',
-              paidBy: currentAccount.address,
-              coinType,
-              description: intentDescription,
-              transactionHash: txResult.digest,
-            });
           }
         }
         
-        // Reset client and trigger refresh
+        // Reset client and redirect
         resetClient();
-        usePaymentStore.getState().triggerRefresh();
-        
-        // Ensure we save payment data regardless of event processing
-        // This is a backup approach that will save minimal information if the event parsing fails
-        try {
-          console.log("Attempting backup payment save with minimal information");
-          
-          // This backup mechanism ensures payment data is saved even if the primary save mechanism fails
-          // It uses a different API endpoint with more robust error handling to guarantee data persistence
-          // The 'backup' flag is just for tracking which save method succeeded
-          fetch('/api/payments/force-save', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              paymentId,
-              paidAmount: amount,
-              tipAmount: tip.toString(),
-              issuedBy: issuedBy || 'undefined',
-              paidBy: currentAccount.address,
-              coinType,
-              description: intentDescription,
-              transactionHash: txResult.digest,
-              backup: true
-            }),
-          }).then(response => {
-            if (response.ok) {
-              console.log("Backup payment save successful");
-            } else {
-              console.error("Backup payment save failed");
-            }
-          }).catch(err => {
-            console.error("Error in backup payment save:", err);
-          });
-        } catch (backupError) {
-          console.error("Failed to execute backup save:", backupError);
-        }
-        
-        // Redirect to a success page or home
-        setTimeout(() => router.push('/'), 1500)
+        setTimeout(() => router.push(`/merchant/${merchantId}`), 1500)
       }
       
     } catch (error: any) {
@@ -356,7 +279,7 @@ export default function PayPage() {
       </div>
 
       {/* Action Buttons */}
-      <ActionButtonsCustomer />
+      <ActionButtonsMerchant />
     </div>
   )
 } 

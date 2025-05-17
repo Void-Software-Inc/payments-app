@@ -14,7 +14,7 @@ import { truncateMiddle } from "@/utils/formatters"
 import { User } from "lucide-react"
 import Link from "next/link"
 import { getCoinDecimals } from "@/utils/helpers"
-import { ActionButtons } from "@/components/ActionButtons"
+import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
 import { PendingPayments } from "./components/PendingPayments"
 
 // Define constants for coin types
@@ -147,7 +147,7 @@ export default function PaymentAccountPage() {
           </div>
         </div>
       </div>
-      <ActionButtons />
+      <ActionButtonsMerchant />
     </div>
   )
 } 
