@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     let dbError = null;
     
     try {
-      // Basic raw query
-      const result = await prisma.$queryRaw`SELECT 1 as test`;
+      // Use Prisma model method instead of raw query
+      const count = await prisma.completedPayment.count();
       dbStatus = "Connected";
-      console.log("Database connection successful", result);
+      console.log("Database connection successful, count:", count);
     } catch (error) {
       console.error("Database connection failed:", error);
       dbStatus = "Error";
