@@ -109,54 +109,85 @@ export async function POST(request: NextRequest) {
     
     console.log("FORCE-SAVE: Attempting direct database save with:", normalizedData);
     
-    // Try to use upsert directly first - simpler approach
+    // Try simplified approach first
     try {
-      const result = await prisma.completedPayment.upsert({
+      const createData = {
+        ...normalizedData,
+        id: crypto.randomUUID(), // Generate a UUID for the ID field
+      };
+      
+      // Check if record already exists first before using upsert
+      // This helps avoid some connection pool issues with Supabase
+      const existingRecord = await prisma.completedPayment.findUnique({
         where: { paymentId: body.paymentId },
-        update: normalizedData,
-        create: {
-          ...normalizedData,
-          id: crypto.randomUUID(), // Generate a UUID for the ID field
-        },
+        select: { id: true }
       });
+      
+      let result;
+      if (existingRecord) {
+        // Update existing record
+        console.log("FORCE-SAVE: Record exists, updating");
+        result = await prisma.completedPayment.update({
+          where: { paymentId: body.paymentId },
+          data: normalizedData
+        });
+      } else {
+        // Create new record
+        console.log("FORCE-SAVE: Record does not exist, creating new");
+        result = await prisma.completedPayment.create({
+          data: createData
+        });
+      }
       
       console.log("FORCE-SAVE: Successfully saved payment:", result);
       return NextResponse.json({ success: true, data: result });
     } catch (dbError) {
-      console.error("FORCE-SAVE: Upsert operation failed:", dbError);
+      console.error("FORCE-SAVE: Database operation failed:", dbError);
       
-      // Fall back to transaction approach
+      // Try raw SQL approach as last resort
       try {
-        console.log("FORCE-SAVE: Attempting transaction approach");
+        console.log("FORCE-SAVE: Falling back to raw SQL insertion");
         
-        const result = await prisma.$transaction(async (tx: typeof prisma) => {
-          // Check if record already exists
-          const existing = await tx.completedPayment.findUnique({
-            where: { paymentId: body.paymentId }
-          });
-          
-          if (existing) {
-            console.log("FORCE-SAVE: Record already exists, updating");
-            return await tx.completedPayment.update({
-              where: { paymentId: body.paymentId },
-              data: normalizedData
-            });
-          } else {
-            console.log("FORCE-SAVE: Creating new record");
-            return await tx.completedPayment.create({
-              data: {
-                ...normalizedData,
-                id: crypto.randomUUID(), // Generate a UUID for the ID field
-              }
-            });
-          }
+        // Generate values for insertion
+        const id = crypto.randomUUID();
+        const timestamp = new Date().toISOString();
+        
+        // Execute raw SQL query - handles both insert and update
+        await prisma.$executeRaw`
+          INSERT INTO "public"."CompletedPayment" (
+            "id", "paymentId", "paidAmount", "tipAmount", "issuedBy", 
+            "paidBy", "coinType", "description", "transactionHash", 
+            "createdAt", "updatedAt"
+          ) 
+          VALUES (
+            ${id}, ${body.paymentId}, ${normalizedData.paidAmount}, 
+            ${normalizedData.tipAmount}, ${normalizedData.issuedBy}, 
+            ${normalizedData.paidBy}, ${normalizedData.coinType}, 
+            ${normalizedData.description}, ${normalizedData.transactionHash}, 
+            ${timestamp}, ${timestamp}
+          )
+          ON CONFLICT ("paymentId") 
+          DO UPDATE SET 
+            "paidAmount" = ${normalizedData.paidAmount},
+            "tipAmount" = ${normalizedData.tipAmount}, 
+            "issuedBy" = ${normalizedData.issuedBy},
+            "paidBy" = ${normalizedData.paidBy},
+            "coinType" = ${normalizedData.coinType},
+            "description" = ${normalizedData.description},
+            "transactionHash" = ${normalizedData.transactionHash},
+            "updatedAt" = ${timestamp}
+        `;
+        
+        console.log("FORCE-SAVE: Raw SQL approach successful");
+        return NextResponse.json({ 
+          success: true, 
+          method: "raw-sql",
+          id: id,
+          paymentId: body.paymentId 
         });
-        
-        console.log("FORCE-SAVE: Transaction approach successful:", result);
-        return NextResponse.json({ success: true, data: result });
-      } catch (txError) {
-        console.error("FORCE-SAVE: Transaction approach failed:", txError);
-        throw txError;
+      } catch (sqlError) {
+        console.error("FORCE-SAVE: Raw SQL approach failed:", sqlError);
+        throw sqlError;
       }
     }
   } catch (error) {
