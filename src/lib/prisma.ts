@@ -47,25 +47,35 @@ export const prisma = globalForPrisma.prisma || (() => {
     config.log = ['query', 'info', 'warn', 'error'];
   }
   
-  // Configure database connection for Supabase
-  // Critical for production: Add connection pooling for Supabase
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    console.error("DATABASE_URL environment variable is not set!");
-  } else {
-    console.log(`Database URL detected (${url.substring(0, 20)}...)`);
-  }
-  
-  // Add pgBouncer flag required for Supabase connection pooling
-  config.datasources = {
-    db: {
-      url: url ? `${url}?pgbouncer=true&connection_limit=1` : undefined
+  try {
+    // For Supabase, connection string needs specific format
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      console.error("DATABASE_URL environment variable is not set!");
+    } else {
+      console.log(`Database URL detected (length: ${url.length})`);
+
+      // Initialize database connection without any additional parameters
+      // This is more stable with Supabase
+      config.datasources = {
+        db: {
+          url: url
+        }
+      };
     }
-  };
-  
-  const instance = new PrismaClient(config);
-  console.log("PrismaClient instance created for database");
-  return instance;
+    
+    console.log("Creating Prisma client with config:", JSON.stringify({
+      ...config,
+      datasources: {
+        db: { url: config.datasources?.db?.url ? '[REDACTED]' : undefined }
+      }
+    }));
+    
+    return new PrismaClient(config);
+  } catch (err) {
+    console.error("Error initializing Prisma client:", err);
+    throw err;
+  }
 })();
 
 if (process.env.NODE_ENV !== 'production') {
