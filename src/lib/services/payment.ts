@@ -39,15 +39,31 @@ export const PaymentService = {
         throw new Error("Prisma client not properly initialized");
       }
       
+      // Format USDC amount (divide by 1,000,000)
+      let formattedPaidAmount = paidAmount.toString();
+      let formattedTipAmount = tipAmount.toString();
+      
+      if (coinType.includes('::usdc::USDC')) {
+        try {
+          const amountNum = BigInt(paidAmount.toString());
+          formattedPaidAmount = (Number(amountNum) / 1000000).toString();
+          
+          const tipNum = BigInt(tipAmount.toString());
+          formattedTipAmount = (Number(tipNum) / 1000000).toString();
+        } catch (e) {
+          console.warn("PaymentService: Failed to format USDC amount", e);
+        }
+      }
+      
       // Normalize values to ensure they are stored as strings
       const normalizedData = {
         paymentId,
-        paidAmount: paidAmount.toString(),
-        tipAmount: tipAmount.toString(),
+        paidAmount: formattedPaidAmount,
+        tipAmount: formattedTipAmount,
         issuedBy,
         paidBy,
         coinType,
-        description: description || '',
+        description: description || '', // Ensure description is never null
         transactionHash,
       };
       

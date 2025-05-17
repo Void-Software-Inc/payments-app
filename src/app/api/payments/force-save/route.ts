@@ -1,6 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Basic security validation for payment data
+function validatePaymentData(body: any) {
+  // Skip strict validation in development mode
+  if (process.env.NODE_ENV === 'development') {
+    console.log("Development mode: Skipping strict validation");
+    return { valid: true };
+  }
+
+  // 1. Validate paymentId format (SUI transaction ID is 64 hex characters)
+  if (!body.paymentId || typeof body.paymentId !== 'string' || !/^[a-f0-9]{64}$/i.test(body.paymentId)) {
+    return { valid: false, error: 'Invalid payment ID format' };
+  }
+  
+  // 2. Validate wallet addresses
+  if (!body.paidBy || typeof body.paidBy !== 'string' || !body.paidBy.startsWith('0x')) {
+    return { valid: false, error: 'Invalid payer wallet address' };
+  }
+  
+  if (!body.issuedBy || typeof body.issuedBy !== 'string' || !body.issuedBy.startsWith('0x')) {
+    return { valid: false, error: 'Invalid issuer wallet address' };
+  }
+  
+  // 3. Validate transaction hash format
+  if (!body.transactionHash || typeof body.transactionHash !== 'string') {
+    return { valid: false, error: 'Invalid transaction hash' };
+  }
+  
+  return { valid: true };
+}
+
+// Format USDC amount (divide by 1,000,000)
+function formatCryptoAmount(amount: string, coinType: string) {
+  if (coinType.includes('::usdc::USDC')) {
+    try {
+      const amountNum = BigInt(amount);
+      return (Number(amountNum) / 1000000).toString();
+    } catch (e) {
+      console.warn("Failed to format USDC amount:", e);
+    }
+  }
+  return amount;
+}
+
 /**
  * POST /api/payments/force-save
  * Direct database save that bypasses the service layer
@@ -21,6 +64,16 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Validate data for security
+    const validation = validatePaymentData(body);
+    if (!validation.valid) {
+      console.error(`FORCE-SAVE: Security validation failed: ${validation.error}`);
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      );
+    }
+    
     // Check if prisma client is available
     if (!prisma || !prisma.completedPayment) {
       console.error("FORCE-SAVE: Prisma client not properly initialized");
@@ -30,11 +83,15 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Format crypto amounts if needed
+    const formattedPaidAmount = formatCryptoAmount(body.paidAmount || '0', body.coinType || '');
+    const formattedTipAmount = formatCryptoAmount(body.tipAmount || '0', body.coinType || '');
+    
     // Create normalized data to save
     const normalizedData = {
       paymentId: body.paymentId,
-      paidAmount: body.paidAmount || '0',
-      tipAmount: body.tipAmount || '0',
+      paidAmount: formattedPaidAmount,
+      tipAmount: formattedTipAmount,
       issuedBy: body.issuedBy || 'unknown',
       paidBy: body.paidBy,
       coinType: body.coinType || 'unknown',

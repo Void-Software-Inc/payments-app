@@ -115,7 +115,27 @@ export default function PayPage() {
       
       // Extract intent information
       const intentArgs = intentDetails.args as any;
-      const intentDescription = intentArgs?.description || '';
+      
+      // Log all potential description fields to help diagnose the issue
+      console.log("Intent args for description:", {
+        description: intentArgs?.description,
+        desc: intentArgs?.desc,
+        message: intentArgs?.message,
+        title: intentArgs?.title,
+        memo: intentArgs?.memo,
+        note: intentArgs?.note,
+        fullArgs: intentArgs
+      });
+      
+      const intentDescription = intentArgs?.description || 
+                               intentArgs?.desc || 
+                               intentArgs?.message || 
+                               intentArgs?.title ||
+                               intentArgs?.memo ||
+                               intentArgs?.note || '';
+      
+      console.log("Final intent description:", intentDescription);
+      
       const coinType = intentArgs?.coinType || USDC_COIN_TYPE;
       const issuedBy = (intentDetails as any).creator || intentArgs?.issuedBy || '';
       

@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL_WITH_SCHEMA") // Use in production
+  directUrl = env("DIRECT_URL_WITH_SCHEMA") // Required for migrations
 }
 
 // Store completed payment transactions

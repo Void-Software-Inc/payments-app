@@ -35,14 +35,27 @@ const globalForPrisma = global as unknown as { prisma: any }
 
 // Use existing instance or create new one
 export const prisma = globalForPrisma.prisma || (() => {
-  console.log("Creating new PrismaClient instance with SQLite");
+  console.log("Creating new PrismaClient instance");
   
-  // Use SQLite for local development
-  const instance = new PrismaClient({
-    log: ['query', 'info', 'warn', 'error'],
-  });
+  // Configure client based on environment
+  const config: any = {
+    log: ['error', 'warn'],
+  };
   
-  console.log("PrismaClient instance created with SQLite");
+  // In development, show more verbose logs
+  if (process.env.NODE_ENV === 'development') {
+    config.log = ['query', 'info', 'warn', 'error'];
+  }
+  
+  // Add pgbouncer flag for connection pooling
+  config.datasources = {
+    db: {
+      url: process.env.DATABASE_URL + '?pgbouncer=true'
+    }
+  };
+  
+  const instance = new PrismaClient(config);
+  console.log("PrismaClient instance created for database");
   return instance;
 })();
 
