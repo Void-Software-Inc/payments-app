@@ -1,0 +1,30 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Store completed payment transactions
+model CompletedPayment {
+  id              String   @id @default(cuid())
+  paymentId       String   @unique // The original payment intent ID
+  paidAmount      String   // Amount paid
+  tipAmount       String   // Tip amount
+  issuedBy        String   // Original creator of the payment intent
+  paidBy          String   // Address of the wallet that paid
+  coinType        String   // Type of coin used for payment
+  description     String?  // Description of the payment
+  transactionHash String   // SUI transaction hash for reference
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([paidBy])
+  @@index([issuedBy])
+} 

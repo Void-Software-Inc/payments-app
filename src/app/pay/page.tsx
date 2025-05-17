@@ -18,12 +18,49 @@ import { formatSuiBalance, truncateMiddle } from "@/utils/formatters"
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
 
+// Function to save a completed payment to the database
+async function saveCompletedPayment(data: {
+  paymentId: string;
+  paidAmount: string;
+  tipAmount: string;
+  issuedBy: string;
+  paidBy: string;
+  coinType: string;
+  description?: string;
+  transactionHash: string;
+}) {
+  try {
+    console.log("Attempting to save payment to database:", data);
+    
+    const response = await fetch('/api/payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      console.error('Error saving payment:', responseData);
+      return false;
+    }
+    
+    console.log("Payment saved successfully:", responseData);
+    return true;
+  } catch (error) {
+    console.error('Error saving payment to database:', error);
+    return false;
+  }
+}
+
 export default function PayPage() {
   const params = useParams()
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { initPaymentClient, makePayment } = usePaymentClient()
+  const { initPaymentClient, makePayment, getIntent } = usePaymentClient()
   const { resetClient } = usePaymentStore()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
@@ -66,6 +103,22 @@ export default function PayPage() {
     try {
       setIsProcessing(true)
       
+      // Get the intent details BEFORE processing the payment
+      // This is critical because after the payment is processed, the intent may be removed
+      const intentDetails = await getIntent(currentAccount.address, paymentId);
+      
+      if (!intentDetails) {
+        toast.error("Could not retrieve payment details. It may have already been paid.")
+        setIsProcessing(false)
+        return
+      }
+      
+      // Extract intent information
+      const intentArgs = intentDetails.args as any;
+      const intentDescription = intentArgs?.description || '';
+      const coinType = intentArgs?.coinType || USDC_COIN_TYPE;
+      const issuedBy = (intentDetails as any).creator || intentArgs?.issuedBy || '';
+      
       // Create a new transaction
       const tx = new Transaction()
       
@@ -101,10 +154,15 @@ export default function PayPage() {
         
         // Extract payment details from events if available
         if (txResult.events && txResult.events.length > 0) {
+          console.log("Transaction events:", JSON.stringify(txResult.events));
+          
           try {
             const paymentEvent = txResult.events.find((event: any) => 
               event?.type?.includes('::payment_events::PaymentExecuted')
             );
+            
+            console.log("Found payment event:", paymentEvent ? "YES" : "NO", 
+              paymentEvent ? JSON.stringify(paymentEvent) : "");
             
             if (paymentEvent?.parsedJson) {
               const data = paymentEvent.parsedJson;
@@ -112,24 +170,93 @@ export default function PayPage() {
                 paymentId: data.payment_id,
                 timestamp: data.timestamp,
                 paidAmount: data.amount,
-                tipAmount: data.tip,
+                tipAmount: data.tip || '0',
                 issuedBy: data.issued_by
               };
               
               console.log("Payment executed:", paymentDetails);
+
+              // Save the completed payment to database
+              await saveCompletedPayment({
+                paymentId: paymentDetails.paymentId,
+                paidAmount: paymentDetails.paidAmount.toString(),
+                tipAmount: paymentDetails.tipAmount.toString(),
+                issuedBy: paymentDetails.issuedBy,
+                paidBy: currentAccount.address,
+                coinType,
+                description: intentDescription,
+                transactionHash: txResult.digest,
+              });
               
               // Show success message with formatted amount
               const formattedAmount = formatSuiBalance(BigInt(paymentDetails.paidAmount));
               toast.success(`Paid ${formattedAmount} to ${truncateMiddle(paymentDetails.issuedBy)}`);
+            } else {
+              // Fallback if we couldn't extract details from the event
+              // Still attempt to save the payment with what we know
+              await saveCompletedPayment({
+                paymentId,
+                paidAmount: intentArgs?.amount?.toString() || '0',
+                tipAmount: tip.toString(),
+                issuedBy,
+                paidBy: currentAccount.address,
+                coinType,
+                description: intentDescription,
+                transactionHash: txResult.digest,
+              });
             }
           } catch (error) {
             console.warn("Error parsing payment events:", error);
+            // Attempt to save with basic information even if parsing failed
+            await saveCompletedPayment({
+              paymentId,
+              paidAmount: intentArgs?.amount?.toString() || '0',
+              tipAmount: tip.toString(),
+              issuedBy,
+              paidBy: currentAccount.address,
+              coinType,
+              description: intentDescription,
+              transactionHash: txResult.digest,
+            });
           }
         }
         
         // Reset client and trigger refresh
         resetClient();
         usePaymentStore.getState().triggerRefresh();
+        
+        // Ensure we save payment data regardless of event processing
+        // This is a backup approach that will save minimal information if the event parsing fails
+        try {
+          console.log("Attempting backup payment save with minimal information");
+          fetch('/api/payments/force-save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              paymentId,
+              paidAmount: intentArgs?.amount?.toString() || '0',
+              tipAmount: tip.toString(),
+              issuedBy,
+              paidBy: currentAccount.address,
+              coinType,
+              description: intentDescription,
+              transactionHash: txResult.digest,
+              backup: true
+            }),
+          }).then(response => {
+            if (response.ok) {
+              console.log("Backup payment save successful");
+            } else {
+              console.error("Backup payment save failed");
+            }
+          }).catch(err => {
+            console.error("Error in backup payment save:", err);
+          });
+        } catch (backupError) {
+          console.error("Failed to execute backup save:", backupError);
+        }
         
         // Redirect to a success page or home
         setTimeout(() => router.push('/'), 1500)
