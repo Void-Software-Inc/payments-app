@@ -15,7 +15,7 @@ interface AllPendingPaymentsProps {
   merchantId: string
 }
 
-type StatusFilter = 'all' | 'pending' | 'executed' | 'rejected' | 'expired';
+type StatusFilter = 'all' | 'pending' | 'executed' | 'expired';
 
 export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
   const router = useRouter()
@@ -28,6 +28,24 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
+  // Check if a payment is expired
+  const checkPaymentExpiration = (payment: PendingPayment): PendingPayment => {
+    // Clone the payment to avoid direct mutations
+    const updatedPayment = { ...payment };
+    
+    if (updatedPayment.rawIntent?.fields?.expirationTime) {
+      const expirationTime = Number(updatedPayment.rawIntent.fields.expirationTime);
+      const now = Date.now();
+      
+      // If the payment is expired and still shown as pending, update its status
+      if (now > expirationTime && updatedPayment.status === 'pending') {
+        updatedPayment.status = 'expired';
+      }
+    }
+    
+    return updatedPayment;
+  }
 
   useEffect(() => {
     // Only proceed if we have the wallet address
@@ -43,14 +61,18 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
         
         // Convert the record to an array and sort by date (newest first)
         const paymentsArray = Object.values(paymentsRecord);
-        paymentsArray.sort((a, b) => {
+        
+        // Check for expired payments and update their status
+        const updatedPaymentsArray = paymentsArray.map(checkPaymentExpiration);
+        
+        updatedPaymentsArray.sort((a, b) => {
           const dateA = new Date(`${a.date} ${a.time}`);
           const dateB = new Date(`${b.date} ${b.time}`);
           return dateB.getTime() - dateA.getTime();
         });
         
-        setPendingPayments(paymentsArray)
-        setFilteredPayments(paymentsArray)
+        setPendingPayments(updatedPaymentsArray)
+        setFilteredPayments(updatedPaymentsArray)
       } catch (error) {
         console.error("Error fetching pending payments:", error)
         setPendingPayments([])
@@ -61,7 +83,7 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
     }
 
     fetchPendingPayments()
-  }, [currentAccount?.address, merchantId])
+  }, [currentAccount?.address, merchantId, refreshTrigger])
   
   // Filter payments when search term or status filter changes
   useEffect(() => {
@@ -123,22 +145,62 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
         maximumFractionDigits: 2
       });
       
-      // Extract coin symbol from coinType
-      const coinSymbol = coinType.split('::').pop() || 'COIN';
-      
-      return `${formattedAmount} ${coinSymbol}`;
+      // For USDC, just return $ amount. For others, include coin symbol
+      if (isUSDC) {
+        return `$${formattedAmount}`;
+      } else {
+        // Extract coin symbol from coinType
+        const coinSymbol = coinType.split('::').pop() || 'COIN';
+        return `${formattedAmount} ${coinSymbol}`;
+      }
     } catch (e) {
       return `${amount} UNKNOWN`;
     }
   }
 
   // Get relative time (e.g., "3 hours ago")
-  const getRelativeTime = (dateStr: string, timeStr: string): string => {
+  const getRelativeTime = (dateStr: string, timeStr: string, rawIntent?: any): string => {
     try {
-      const date = new Date(`${dateStr} ${timeStr}`);
+      // Try to form date from provided dateStr and timeStr first
+      let date: Date;
+      
+      if (rawIntent?.fields?.creationTime) {
+        // If creationTime is available in intent fields, use it (highest priority)
+        date = new Date(Number(rawIntent.fields.creationTime));
+      } else {
+        // Otherwise fall back to the strings
+        date = new Date(`${dateStr} ${timeStr}`);
+      }
+      
       return formatDistanceToNow(date, { addSuffix: true });
     } catch (e) {
+      console.error("Error formatting date:", e);
       return `${dateStr} ${timeStr}`;
+    }
+  }
+
+  // Get expiration time formatted
+  const getExpirationTime = (rawIntent?: any): string | null => {
+    if (!rawIntent?.fields?.expirationTime || !rawIntent?.fields?.creationTime) {
+      return null;
+    }
+    
+    try {
+      // expirationTime is a duration in milliseconds (6 hours = 21600000ms)
+      const durationMs = Number(rawIntent.fields.expirationTime);
+      // creationTime is a timestamp
+      const creationTime = Number(rawIntent.fields.creationTime);
+      // Calculate actual expiration timestamp by adding duration to creation time
+      const expirationTimestamp = creationTime + durationMs;
+      const now = Date.now();
+      
+      // Create a Date object from the calculated expiration timestamp
+      const expirationDate = new Date(expirationTimestamp);
+      
+      // Use formatDistanceToNow for both expired and active payments
+      return formatDistanceToNow(expirationDate, { addSuffix: true });
+    } catch (e) {
+      return null;
     }
   }
 
@@ -187,14 +249,14 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
           <CheckCircle className="h-4 w-4 mr-1" /> Completed
         </Button>
         <Button 
-          variant={statusFilter === 'rejected' ? 'default' : 'outline'} 
+          variant={statusFilter === 'expired' ? 'default' : 'outline'} 
           size="sm"
-          className={statusFilter === 'rejected' 
+          className={statusFilter === 'expired' 
             ? 'bg-[#78BCDB] hover:bg-[#68ACCC] text-white' 
             : 'border-[#3B3C3F] bg-[#1F1F23] text-white'}
-          onClick={() => setStatusFilter('rejected')}
+          onClick={() => setStatusFilter('expired')}
         >
-          <X className="h-4 w-4 mr-1" /> Rejected
+          <X className="h-4 w-4 mr-1" /> Expired
         </Button>
       </div>
     </div>
@@ -242,7 +304,11 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-10 h-14 mr-2 rounded-full flex items-center justify-center">
-                  <CirclePlus className="size-7 text-white" />
+                  {payment.status === 'expired' ? (
+                    <X className="size-7 text-amber-500" />
+                  ) : (
+                    <CirclePlus className="size-7 text-white" />
+                  )}
                 </div>
               </div>
               <div className="flex-1">
@@ -251,10 +317,18 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
                     <h3 className="text-md text-white truncate">
                       {payment.rawIntent?.fields?.description || payment.description || 'Payment'}
                     </h3>
-                    <p className="text-sm text-gray-400">{getRelativeTime(payment.date, payment.time)}</p>
+                    <p className="text-sm text-gray-400">{getRelativeTime(payment.date, payment.time, payment.rawIntent)}</p>
+                    {payment.status === 'expired' && (
+                      <p className="text-xs text-amber-500">Expired {getExpirationTime(payment.rawIntent)}</p>
+                    )}
                   </div>
                   <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
-                    <p className="text-lg font-bold text-white truncate">+ {formatAmount(payment.amount, payment.coinType)}</p>
+                    <p className="text-lg font-bold text-white truncate">
+                      + {formatAmount(payment.amount, payment.coinType)}
+                    </p>
+                    {payment.status === 'pending' && payment.rawIntent?.fields?.expirationTime && (
+                      <p className="text-xs text-gray-400">Expires {getExpirationTime(payment.rawIntent)}</p>
+                    )}
                   </div>
                 </div>
               </div>

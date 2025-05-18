@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionButtonsCustomer } from "@/components/ActionButtonsCustomer";
 import { WithdrawForm } from "./components/WithdrawForm";
 
 export default function WithdrawPage() {
@@ -11,6 +12,7 @@ export default function WithdrawPage() {
         </div>
         <WithdrawForm />
       </div>
+      <ActionButtonsCustomer />
     </div>
   );
 } 

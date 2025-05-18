@@ -20,6 +20,7 @@ export const PaymentService = {
     coinType,
     description,
     transactionHash,
+    creationTime,
   }: {
     paymentId: string;
     paidAmount: string | bigint;
@@ -29,6 +30,7 @@ export const PaymentService = {
     coinType: string;
     description?: string;
     transactionHash: string;
+    creationTime?: number | string;
   }) {
     try {
       console.log("PaymentService: Attempting to save payment", { paymentId, paidBy });
@@ -53,6 +55,21 @@ export const PaymentService = {
         }
       }
       
+      // Create a Date object from creationTime if provided
+      let createdAt = undefined;
+      if (creationTime) {
+        try {
+          createdAt = new Date(Number(creationTime));
+          // Validate the date is valid
+          if (isNaN(createdAt.getTime())) {
+            console.warn("PaymentService: Invalid creationTime, falling back to default", creationTime);
+            createdAt = undefined;
+          }
+        } catch (e) {
+          console.warn("PaymentService: Error parsing creationTime, falling back to default", e);
+        }
+      }
+      
       // Normalize values to ensure they are stored as strings
       const normalizedData = {
         paymentId,
@@ -63,6 +80,7 @@ export const PaymentService = {
         coinType,
         description: description || '', // Ensure description is never null
         transactionHash,
+        ...(createdAt && { createdAt }), // Only include if valid date
       };
       
       console.log("PaymentService: Normalized data:", normalizedData);

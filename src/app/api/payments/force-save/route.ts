@@ -100,26 +100,31 @@ export async function POST(request: NextRequest) {
     
     console.log("FORCE-SAVE: Attempting direct database save");
     
+    // Parse creationTime if provided, or use current time
+    let createdAt = 'NOW()';
+    if (body.creationTime) {
+      try {
+        const date = new Date(Number(body.creationTime));
+        if (!isNaN(date.getTime())) {
+          // Format as ISO string for PostgreSQL
+          createdAt = `'${date.toISOString()}'::timestamptz`;
+        }
+      } catch (e) {
+        console.warn("FORCE-SAVE: Invalid creationTime, using current time:", e);
+      }
+    }
+    
     // Directly use createMany which is more reliable with connection pooling
     try {
-      const result = await prisma.$executeRaw`
+      // Use template literal to insert createdAt directly, avoiding prisma.raw()
+      const query = `
         INSERT INTO "CompletedPayment" (
           "id", "paymentId", "paidAmount", "tipAmount", "issuedBy", 
           "paidBy", "coinType", "description", "transactionHash", 
           "createdAt", "updatedAt"
         ) 
         VALUES (
-          ${paymentData.id}, 
-          ${paymentData.paymentId}, 
-          ${paymentData.paidAmount}, 
-          ${paymentData.tipAmount}, 
-          ${paymentData.issuedBy}, 
-          ${paymentData.paidBy}, 
-          ${paymentData.coinType}, 
-          ${paymentData.description}, 
-          ${paymentData.transactionHash}, 
-          NOW(), 
-          NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, ${createdAt}, NOW()
         )
         ON CONFLICT ("paymentId") 
         DO UPDATE SET 
@@ -132,6 +137,19 @@ export async function POST(request: NextRequest) {
           "transactionHash" = EXCLUDED."transactionHash",
           "updatedAt" = NOW()
       `;
+
+      const result = await prisma.$executeRawUnsafe(
+        query,
+        paymentData.id,
+        paymentData.paymentId,
+        paymentData.paidAmount,
+        paymentData.tipAmount,
+        paymentData.issuedBy,
+        paymentData.paidBy,
+        paymentData.coinType,
+        paymentData.description,
+        paymentData.transactionHash
+      );
       
       console.log("FORCE-SAVE: Database operation successful");
       return NextResponse.json({ 

@@ -22,6 +22,19 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
   const [pendingPayments, setPendingPayments] = useState<ClientPendingPayment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
+  // Check if a payment is expired based on expirationTime and creationTime
+  const checkPaymentExpiration = (payment: ClientPendingPayment): boolean => {
+    if (payment.rawIntent?.fields?.expirationTime && payment.rawIntent?.fields?.creationTime) {
+      const durationMs = Number(payment.rawIntent.fields.expirationTime);
+      const creationTime = Number(payment.rawIntent.fields.creationTime);
+      const expirationTimestamp = creationTime + durationMs;
+      const now = Date.now();
+      
+      return now > expirationTimestamp;
+    }
+    return false;
+  }
+
   useEffect(() => {
     // Only proceed if we have the wallet address
     if (!currentAccount?.address) {
@@ -34,8 +47,14 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
         // Fetch real pending payments from the payment client
         const paymentsRecord = await getPendingPayments(currentAccount.address, merchantId);
         
-        // Convert the record to an array and sort by date (newest first)
-        const paymentsArray = Object.values(paymentsRecord);
+        // Convert the record to an array and filter out expired payments
+        const paymentsArray = Object.values(paymentsRecord)
+          .filter(payment => 
+            // Only include payments that are not expired and have a pending status
+            !checkPaymentExpiration(payment) && payment.status === 'pending'
+          );
+        
+        // Sort by date (newest first)
         paymentsArray.sort((a, b) => {
           const dateA = new Date(`${a.date} ${a.time}`);
           const dateB = new Date(`${b.date} ${b.time}`);
@@ -76,10 +95,14 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
         maximumFractionDigits: 2
       });
       
-      // Extract coin symbol from coinType
-      const coinSymbol = coinType.split('::').pop() || 'COIN';
-      
-      return `${formattedAmount} ${coinSymbol}`;
+      // For USDC, just return $ amount. For others, include coin symbol
+      if (isUSDC) {
+        return `$${formattedAmount}`;
+      } else {
+        // Extract coin symbol from coinType
+        const coinSymbol = coinType.split('::').pop() || 'COIN';
+        return `${formattedAmount} ${coinSymbol}`;
+      }
     } catch (e) {
       return `${amount} UNKNOWN`;
     }

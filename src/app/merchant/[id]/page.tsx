@@ -14,8 +14,9 @@ import { truncateMiddle } from "@/utils/formatters"
 import { User } from "lucide-react"
 import Link from "next/link"
 import { getCoinDecimals } from "@/utils/helpers"
-import { ActionButtons } from "@/components/ActionButtons"
+import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
 import { PendingPayments } from "./components/PendingPayments"
+import { HistoryPayments } from "./components/HistoryPayments";
 
 // Define constants for coin types
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -143,11 +144,12 @@ export default function PaymentAccountPage() {
             {/* Pending Payments Section */}
             <div className="mb-10">
               <PendingPayments merchantId={accountId} limit={2} />
+              <HistoryPayments merchantId={accountId} limit={2}/>
             </div>
           </div>
         </div>
       </div>
-      <ActionButtons />
+      <ActionButtonsMerchant />
     </div>
   )
 } 

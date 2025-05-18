@@ -19,8 +19,9 @@ function validatePaymentData(body: any) {
     return { valid: false, error: 'Invalid payer wallet address' };
   }
   
-  if (!body.issuedBy || typeof body.issuedBy !== 'string' || !body.issuedBy.startsWith('0x')) {
-    return { valid: false, error: 'Invalid issuer wallet address' };
+  // Check issuedBy but be more lenient (may come from different sources)
+  if (!body.issuedBy || typeof body.issuedBy !== 'string') {
+    return { valid: false, error: 'Missing issuer address' };
   }
   
   // 3. Validate transaction hash format (should be base58 string)
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
       coinType: body.coinType,
       description: body.description,
       transactionHash: body.transactionHash,
+      creationTime: body.creationTime,
     });
 
     console.log("API: Payment saved successfully:", completedPayment);
@@ -109,6 +111,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const paymentId = searchParams.get('paymentId');
     const walletAddress = searchParams.get('walletAddress');
+    const paymentAccountId = searchParams.get('paymentAccountId');
     const role = searchParams.get('role') as 'payer' | 'issuer' | null;
 
     // Get by payment ID
@@ -131,8 +134,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: payments });
     }
     
+    // Get by payment account ID
+    if (paymentAccountId) {
+      const payments = await PaymentService.getCompletedPaymentsByAddress(paymentAccountId, role || undefined);
+      return NextResponse.json({ success: true, data: payments });
+    }
+    
     return NextResponse.json(
-      { error: 'Missing required query parameter: paymentId or walletAddress' },
+      { error: 'Missing required query parameter: paymentId, walletAddress, or paymentAccountId' },
       { status: 400 }
     );
   } catch (error) {

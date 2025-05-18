@@ -174,8 +174,12 @@ export function usePaymentClient() {
         const extIntent = intent as unknown as ExtendedIntent;
         const extArgs = extIntent.args as unknown as ExtendedIntentArgs;
         
-        // Extract data from the intent
-        const timestamp = new Date(extIntent.timestamp || Date.now());
+        // Extract the creationTime from intent.fields or fall back to current timestamp
+        const creationTimeNumber = extIntent?.fields?.creationTime 
+          ? Number(extIntent.fields.creationTime) 
+          : (extIntent.timestamp || Date.now());
+        
+        const timestamp = new Date(creationTimeNumber);
         const formattedDate = timestamp.toLocaleDateString();
         const formattedTime = timestamp.toLocaleTimeString();
         
@@ -183,6 +187,18 @@ export function usePaymentClient() {
         const amount = extArgs?.amount?.toString() || "0";
         const coinType = extArgs?.coinType || "unknown";
         const description = extArgs?.description || "";
+        
+        // Check if the payment is expired
+        let status = extIntent.status || "pending";
+        
+        if (status === "pending" && extIntent?.fields?.expirationTime) {
+          const expirationTime = Number(extIntent.fields.expirationTime);
+          const now = Date.now();
+          
+          if (now > expirationTime) {
+            status = "expired";
+          }
+        }
         
         transformedPayments[key] = {
           id: key,
@@ -192,7 +208,7 @@ export function usePaymentClient() {
           amount,
           date: formattedDate,
           time: formattedTime,
-          status: extIntent.status || "pending",
+          status,
           coinType,
           rawIntent: intent
         };
@@ -206,20 +222,39 @@ export function usePaymentClient() {
   };
   
   const getPaymentDetail = async (userAddr: string, accountId: string, paymentId: string): Promise<PendingPayment | null> => {
+    // The payment may have been deleted, so we need to be careful with the client call
+    let client;
     try {
-      const client = await getOrInitClient(userAddr, accountId);
-      const intent = client.getIntent(paymentId);
+      client = await getOrInitClient(userAddr, accountId);
+    } catch (error) {
+      console.error("Error initializing client:", error);
+      return null;
+    }
+    
+    // Safely get the intent
+    let intent;
+    try {
+      intent = client.getIntent(paymentId);
       
       if (!intent) {
         return null;
       }
-      
+    } catch (error) {
+      // Intent not found is expected if it was deleted
+      return null;
+    }
+    
+    try {
       // Cast intent to ExtendedIntent to access additional properties
       const extIntent = intent as unknown as ExtendedIntent;
       const extArgs = extIntent.args as unknown as ExtendedIntentArgs;
       
-      // Extract data from the intent
-      const timestamp = new Date(extIntent.timestamp || Date.now());
+      // Extract the creationTime from intent.fields or fall back to current timestamp
+      const creationTimeNumber = extIntent?.fields?.creationTime 
+        ? Number(extIntent.fields.creationTime) 
+        : (extIntent.timestamp || Date.now());
+      
+      const timestamp = new Date(creationTimeNumber);
       const formattedDate = timestamp.toLocaleDateString();
       const formattedTime = timestamp.toLocaleTimeString();
       
@@ -227,6 +262,18 @@ export function usePaymentClient() {
       const amount = extArgs?.amount?.toString() || "0";
       const coinType = extArgs?.coinType || "unknown";
       const description = extArgs?.description || "";
+      
+      // Check if the payment is expired
+      let status = extIntent.status || "pending";
+      
+      if (status === "pending" && extIntent?.fields?.expirationTime) {
+        const expirationTime = Number(extIntent.fields.expirationTime);
+        const now = Date.now();
+        
+        if (now > expirationTime) {
+          status = "expired";
+        }
+      }
       
       return {
         id: paymentId,
@@ -236,12 +283,12 @@ export function usePaymentClient() {
         amount,
         date: formattedDate,
         time: formattedTime,
-        status: extIntent.status || "pending",
+        status,
         coinType,
         rawIntent: intent
       };
     } catch (error) {
-      console.error("Error getting payment detail:", error);
+      console.error("Error processing payment detail:", error);
       return null;
     }
   };
@@ -277,9 +324,68 @@ export function usePaymentClient() {
   ) => {
     try {
       const client = await getOrInitClient(userAddr);
+      
+      // Get the intent to check if it's expired
+      const intent = client.getIntent(paymentId);
+      
+      if (!intent) {
+        throw new Error("Payment not found");
+      }
+      
+      // Check if the payment has expired
+      if (intent.fields?.expirationTime) {
+        const expirationTime = Number(intent.fields.expirationTime);
+        const now = Date.now();
+        
+        if (now > expirationTime) {
+          throw new Error("Payment has expired and cannot be processed");
+        }
+      }
+      
       client.makePayment(tx, paymentId, tipAmount);
     } catch (error) {
       console.error("Error making payment:", error);
+      throw error;
+    }
+  };
+
+  // Delete an expired payment intent
+  const deletePayment = async (
+    userAddr: string,
+    accountId: string,
+    tx: Transaction,
+    intentKey: string
+  ) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      
+      // Get the intent to check if it exists and is expired
+      const intent = client.getIntent(intentKey);
+      
+      if (!intent) {
+        throw new Error("Payment not found");
+      }
+      
+      // Check if the payment is expired
+      let isExpired = false;
+      if (intent.fields?.expirationTime && intent.fields?.creationTime) {
+        const durationMs = Number(intent.fields.expirationTime);
+        const creationTime = Number(intent.fields.creationTime);
+        const expirationTimestamp = creationTime + durationMs;
+        const now = Date.now();
+        
+        isExpired = now > expirationTimestamp;
+      }
+      
+      // Only allow deletion of expired payments
+      if (!isExpired) {
+        throw new Error("Only expired payments can be deleted");
+      }
+      
+      // Delete the payment intent
+      client.delete(tx, intentKey);
+    } catch (error) {
+      console.error("Error deleting payment:", error);
       throw error;
     }
   };
@@ -298,6 +404,7 @@ export function usePaymentClient() {
     getPaymentDetail,
     getIntent,
     issuePayment,
-    makePayment
+    makePayment,
+    deletePayment
   };
 }
