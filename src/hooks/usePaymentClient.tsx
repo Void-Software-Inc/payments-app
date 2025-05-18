@@ -188,6 +188,18 @@ export function usePaymentClient() {
         const coinType = extArgs?.coinType || "unknown";
         const description = extArgs?.description || "";
         
+        // Check if the payment is expired
+        let status = extIntent.status || "pending";
+        
+        if (status === "pending" && extIntent?.fields?.expirationTime) {
+          const expirationTime = Number(extIntent.fields.expirationTime);
+          const now = Date.now();
+          
+          if (now > expirationTime) {
+            status = "expired";
+          }
+        }
+        
         transformedPayments[key] = {
           id: key,
           intentKey: key,
@@ -196,7 +208,7 @@ export function usePaymentClient() {
           amount,
           date: formattedDate,
           time: formattedTime,
-          status: extIntent.status || "pending",
+          status,
           coinType,
           rawIntent: intent
         };
@@ -236,6 +248,18 @@ export function usePaymentClient() {
       const coinType = extArgs?.coinType || "unknown";
       const description = extArgs?.description || "";
       
+      // Check if the payment is expired
+      let status = extIntent.status || "pending";
+      
+      if (status === "pending" && extIntent?.fields?.expirationTime) {
+        const expirationTime = Number(extIntent.fields.expirationTime);
+        const now = Date.now();
+        
+        if (now > expirationTime) {
+          status = "expired";
+        }
+      }
+      
       return {
         id: paymentId,
         intentKey: paymentId,
@@ -244,7 +268,7 @@ export function usePaymentClient() {
         amount,
         date: formattedDate,
         time: formattedTime,
-        status: extIntent.status || "pending",
+        status,
         coinType,
         rawIntent: intent
       };
@@ -285,6 +309,24 @@ export function usePaymentClient() {
   ) => {
     try {
       const client = await getOrInitClient(userAddr);
+      
+      // Get the intent to check if it's expired
+      const intent = client.getIntent(paymentId);
+      
+      if (!intent) {
+        throw new Error("Payment not found");
+      }
+      
+      // Check if the payment has expired
+      if (intent.fields?.expirationTime) {
+        const expirationTime = Number(intent.fields.expirationTime);
+        const now = Date.now();
+        
+        if (now > expirationTime) {
+          throw new Error("Payment has expired and cannot be processed");
+        }
+      }
+      
       client.makePayment(tx, paymentId, tipAmount);
     } catch (error) {
       console.error("Error making payment:", error);
