@@ -4,11 +4,15 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { QRCodeSVG } from 'qrcode.react'
-import { Copy, Check } from "lucide-react"
-import { useCurrentAccount } from "@mysten/dapp-kit"
+import { Copy, Check, Trash2 } from "lucide-react"
+import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
 import { usePaymentClient, PendingPayment } from "@/hooks/usePaymentClient"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { formatSuiBalance } from "@/utils/formatters"
+import { Transaction } from "@mysten/sui/transactions"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
+import { signAndExecute, handleTxResult } from "@/utils/Tx"
 
 interface PaymentDetailsProps {
   merchantId: string
@@ -18,12 +22,29 @@ interface PaymentDetailsProps {
 export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
-  const { getPaymentDetail } = usePaymentClient()
-  const { refreshTrigger } = usePaymentStore()
+  const { getPaymentDetail, deletePayment } = usePaymentClient()
+  const { refreshTrigger, resetClient } = usePaymentStore()
+  const signTransaction = useSignTransaction()
+  const suiClient = useSuiClient()
   
   const [payment, setPayment] = useState<PendingPayment | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // Check if payment is expired
+  const isExpired = (): boolean => {
+    if (!payment || !payment.rawIntent.fields?.expirationTime || !payment.rawIntent.fields?.creationTime) {
+      return false;
+    }
+    
+    const durationMs = Number(payment.rawIntent.fields.expirationTime);
+    const creationTime = Number(payment.rawIntent.fields.creationTime);
+    const expirationTimestamp = creationTime + durationMs;
+    const now = Date.now();
+    
+    return now > expirationTimestamp;
+  }
 
   useEffect(() => {
     // Only proceed if we have the wallet address
@@ -31,6 +52,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
       return;
     }
     
+    let isMounted = true;
     const fetchPaymentDetails = async () => {
       setIsLoading(true)
       try {
@@ -41,16 +63,27 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           paymentId
         )
         
-        setPayment(paymentDetail)
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setPayment(paymentDetail)
+          setIsLoading(false)
+        }
       } catch (error) {
-        console.error("Error fetching payment details:", error)
-        setPayment(null)
-      } finally {
-        setIsLoading(false)
+        // Only update state if component is still mounted
+        if (isMounted) {
+          console.log("Error fetching payment details, possibly deleted:", error)
+          setPayment(null)
+          setIsLoading(false)
+        }
       }
     }
 
     fetchPaymentDetails()
+    
+    // Cleanup function to avoid state updates after unmount
+    return () => {
+      isMounted = false;
+    }
   }, [currentAccount?.address, merchantId, paymentId, refreshTrigger])
 
   const copyToClipboard = () => {
@@ -60,6 +93,77 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
       setTimeout(() => setCopied(false), 3000)
     }
   }
+
+  const handleDelete = async () => {
+    if (!currentAccount?.address || !payment || !isExpired()) {
+      return;
+    }
+    
+    try {
+      setIsDeleting(true);
+      
+      // Create a new transaction
+      const tx = new Transaction();
+      
+      // Set sender
+      tx.setSender(currentAccount.address);
+      
+      // Stop the useEffect from running further
+      const abortController = new AbortController();
+      const signal = abortController.signal;
+      
+      try {
+        // Delete the payment
+        await deletePayment(
+          currentAccount.address,
+          merchantId,
+          tx,
+          payment.intentKey
+        );
+        
+        // Execute transaction
+        const txResult = await signAndExecute({
+          suiClient,
+          currentAccount,
+          tx,
+          signTransaction,
+          toast
+        }).catch(err => {
+          if (err.message?.includes('User rejected')) {
+            toast.error("Transaction canceled by user");
+            setIsDeleting(false);
+            return null;
+          }
+          throw err;
+        });
+        
+        if (txResult) {
+          handleTxResult(txResult, toast);
+          
+          // Cancel any ongoing fetch operations to prevent errors
+          abortController.abort();
+          
+          // Reset client and trigger refresh
+          resetClient();
+          usePaymentStore.getState().triggerRefresh();
+          
+          // Navigate back immediately - state updates will be cancelled by abort controller
+          router.push(`/merchant/${merchantId}/pending`);
+        } else {
+          // If txResult is null (e.g. user rejected), ensure we reset the state
+          setIsDeleting(false);
+        }
+      } catch (deleteError: any) {
+        console.error("Error deleting payment:", deleteError);
+        toast.error(deleteError.message || "Failed to delete payment");
+        setIsDeleting(false);
+      }
+    } catch (error: any) {
+      console.error("Error setting up deletion:", error);
+      toast.error("Failed to set up deletion");
+      setIsDeleting(false);
+    }
+  };
 
   // Format amount for display
   const formatAmount = (amount: string, coinType: string): string => {
@@ -127,7 +231,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         <div className="flex items-center justify-between mb-1">
           <p className="text-md text-gray-400">Status</p>
         </div>
-        <p className="text-white text-md mb-6">
+        <p className={`text-md mb-6 ${payment.status === 'expired' ? 'text-amber-500' : 'text-white'}`}>
           {payment.status}
         </p>
         
@@ -159,7 +263,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         </p>
         
         <p className="text-md text-gray-400 mb-4">QR Code</p>
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-10">
           <div className="border border-[#737779] rounded-lg p-10 inline-block">
             <QRCodeSVG 
               value={`${window.location.origin}/merchant/${merchantId}/pending/${payment.id}`} 
@@ -169,6 +273,19 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
             />
           </div>
         </div>
+
+        {isExpired() && (
+          <div className="">
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="w-full bg-red-500 hover:bg-red-600 text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {isDeleting ? "Deleting..." : "Delete Expired Payment"}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
