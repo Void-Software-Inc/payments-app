@@ -29,6 +29,7 @@ async function saveCompletedPayment(data: {
   coinType: string;
   description?: string;
   transactionHash: string;
+  creationTime?: string | null;
 }) {
   try {
     // Ensure paidAmount is never zero if it can be avoided
@@ -127,6 +128,11 @@ export default function PayPage() {
       
       // Access description from fields.description which is how it's structured in the Intent
       const intentDescription = intentDetails.fields?.description || '';
+      
+      // Extract creation time if available
+      const creationTime = intentDetails.fields?.creationTime ? 
+        String(intentDetails.fields.creationTime) : null;
+      console.log("Intent creation time:", creationTime);
       
       console.log("Final intent description:", intentDescription);
       
@@ -231,6 +237,7 @@ export default function PayPage() {
                 coinType,
                 description: intentDescription,
                 transactionHash: txResult.digest,
+                creationTime: creationTime,
               });
               
               // Show success message with formatted amount
@@ -248,6 +255,7 @@ export default function PayPage() {
                 coinType,
                 description: intentDescription,
                 transactionHash: txResult.digest,
+                creationTime: creationTime,
               });
             }
           } catch (error) {
@@ -262,6 +270,7 @@ export default function PayPage() {
               coinType,
               description: intentDescription,
               transactionHash: txResult.digest,
+              creationTime: creationTime,
             });
           }
         }
@@ -292,6 +301,7 @@ export default function PayPage() {
               coinType,
               description: intentDescription,
               transactionHash: txResult.digest,
+              creationTime: creationTime,
               backup: true
             }),
           }).then(response => {

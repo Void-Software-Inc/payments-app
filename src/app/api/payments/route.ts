@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       coinType: body.coinType,
       description: body.description,
       transactionHash: body.transactionHash,
+      creationTime: body.creationTime,
     });
 
     console.log("API: Payment saved successfully:", completedPayment);

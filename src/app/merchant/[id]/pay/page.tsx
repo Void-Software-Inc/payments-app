@@ -28,6 +28,7 @@ async function saveCompletedPayment(data: {
   coinType: string;
   description?: string;
   transactionHash: string;
+  creationTime?: string;
 }) {
   try {
     // Ensure paidAmount is never zero if it can be avoided
@@ -126,6 +127,11 @@ export default function MerchantPayPage() {
       // Access description from fields
       const intentDescription = intentDetails.fields?.description || '';
       
+      // Extract creation time if available
+      const creationTime = intentDetails.fields?.creationTime ? 
+        String(intentDetails.fields.creationTime) : undefined;
+      console.log("Intent creation time:", creationTime);
+      
       // Cast intent to access fields
       const intentFields = intentDetails.fields as any;
       const coinType = intentFields?.coinType || USDC_COIN_TYPE;
@@ -206,6 +212,7 @@ export default function MerchantPayPage() {
                 coinType,
                 description: intentDescription,
                 transactionHash: txResult.digest,
+                creationTime: creationTime,
               });
               
               // Show success message
@@ -222,6 +229,7 @@ export default function MerchantPayPage() {
                 coinType,
                 description: intentDescription,
                 transactionHash: txResult.digest,
+                creationTime: creationTime,
               });
             }
           } catch (error) {

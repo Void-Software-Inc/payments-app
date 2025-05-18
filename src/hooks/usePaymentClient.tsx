@@ -174,8 +174,12 @@ export function usePaymentClient() {
         const extIntent = intent as unknown as ExtendedIntent;
         const extArgs = extIntent.args as unknown as ExtendedIntentArgs;
         
-        // Extract data from the intent
-        const timestamp = new Date(extIntent.timestamp || Date.now());
+        // Extract the creationTime from intent.fields or fall back to current timestamp
+        const creationTimeNumber = extIntent?.fields?.creationTime 
+          ? Number(extIntent.fields.creationTime) 
+          : (extIntent.timestamp || Date.now());
+        
+        const timestamp = new Date(creationTimeNumber);
         const formattedDate = timestamp.toLocaleDateString();
         const formattedTime = timestamp.toLocaleTimeString();
         
@@ -218,8 +222,12 @@ export function usePaymentClient() {
       const extIntent = intent as unknown as ExtendedIntent;
       const extArgs = extIntent.args as unknown as ExtendedIntentArgs;
       
-      // Extract data from the intent
-      const timestamp = new Date(extIntent.timestamp || Date.now());
+      // Extract the creationTime from intent.fields or fall back to current timestamp
+      const creationTimeNumber = extIntent?.fields?.creationTime 
+        ? Number(extIntent.fields.creationTime) 
+        : (extIntent.timestamp || Date.now());
+      
+      const timestamp = new Date(creationTimeNumber);
       const formattedDate = timestamp.toLocaleDateString();
       const formattedTime = timestamp.toLocaleTimeString();
       

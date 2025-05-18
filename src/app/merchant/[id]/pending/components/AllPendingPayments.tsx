@@ -133,11 +133,22 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
   }
 
   // Get relative time (e.g., "3 hours ago")
-  const getRelativeTime = (dateStr: string, timeStr: string): string => {
+  const getRelativeTime = (dateStr: string, timeStr: string, rawIntent?: any): string => {
     try {
-      const date = new Date(`${dateStr} ${timeStr}`);
+      // Try to form date from provided dateStr and timeStr first
+      let date: Date;
+      
+      if (rawIntent?.fields?.creationTime) {
+        // If creationTime is available in intent fields, use it (highest priority)
+        date = new Date(Number(rawIntent.fields.creationTime));
+      } else {
+        // Otherwise fall back to the strings
+        date = new Date(`${dateStr} ${timeStr}`);
+      }
+      
       return formatDistanceToNow(date, { addSuffix: true });
     } catch (e) {
+      console.error("Error formatting date:", e);
       return `${dateStr} ${timeStr}`;
     }
   }
@@ -251,7 +262,7 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
                     <h3 className="text-md text-white truncate">
                       {payment.rawIntent?.fields?.description || payment.description || 'Payment'}
                     </h3>
-                    <p className="text-sm text-gray-400">{getRelativeTime(payment.date, payment.time)}</p>
+                    <p className="text-sm text-gray-400">{getRelativeTime(payment.date, payment.time, payment.rawIntent)}</p>
                   </div>
                   <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
                     <p className="text-lg font-bold text-white truncate">+ {formatAmount(payment.amount, payment.coinType)}</p>

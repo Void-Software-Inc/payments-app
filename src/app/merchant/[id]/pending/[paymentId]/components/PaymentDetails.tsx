@@ -134,7 +134,11 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         <div className="flex items-center justify-between mb-1">
           <p className="text-md text-gray-400">Date</p>
         </div>
-        <p className="text-white text-md mb-6">{payment.date} - {payment.time}</p>
+        <p className="text-white text-md mb-6">
+          {payment.rawIntent?.fields?.creationTime 
+            ? new Date(Number(payment.rawIntent.fields.creationTime)).toLocaleString() 
+            : `${payment.date} - ${payment.time}`}
+        </p>
         
         <div className="flex items-center justify-between mb-1">
               <p className="text-md text-gray-400">Your Link</p>
