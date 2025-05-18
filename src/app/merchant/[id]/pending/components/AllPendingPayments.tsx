@@ -145,10 +145,14 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
         maximumFractionDigits: 2
       });
       
-      // Extract coin symbol from coinType
-      const coinSymbol = coinType.split('::').pop() || 'COIN';
-      
-      return `${formattedAmount} ${coinSymbol}`;
+      // For USDC, just return $ amount. For others, include coin symbol
+      if (isUSDC) {
+        return `$${formattedAmount}`;
+      } else {
+        // Extract coin symbol from coinType
+        const coinSymbol = coinType.split('::').pop() || 'COIN';
+        return `${formattedAmount} ${coinSymbol}`;
+      }
     } catch (e) {
       return `${amount} UNKNOWN`;
     }

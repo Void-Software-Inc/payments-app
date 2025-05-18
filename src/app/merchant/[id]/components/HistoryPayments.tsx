@@ -124,7 +124,9 @@ export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
                       <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
                         <p className="text-lg font-bold text-white truncate">
                           {isReceived ? '+ ' : '- '}
-                          {formatCoinAmount(payment.paidAmount, payment.coinType)}
+                          {payment.coinType.toLowerCase().includes('usdc') 
+                            ? '$' + formatCoinAmount(payment.paidAmount, payment.coinType).replace(' USDC', '')
+                            : formatCoinAmount(payment.paidAmount, payment.coinType)}
                         </p>
                       </div>
                     </div>
