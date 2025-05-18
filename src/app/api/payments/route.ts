@@ -111,6 +111,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const paymentId = searchParams.get('paymentId');
     const walletAddress = searchParams.get('walletAddress');
+    const paymentAccountId = searchParams.get('paymentAccountId');
     const role = searchParams.get('role') as 'payer' | 'issuer' | null;
 
     // Get by payment ID
@@ -133,8 +134,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: payments });
     }
     
+    // Get by payment account ID
+    if (paymentAccountId) {
+      const payments = await PaymentService.getCompletedPaymentsByAddress(paymentAccountId, role || undefined);
+      return NextResponse.json({ success: true, data: payments });
+    }
+    
     return NextResponse.json(
-      { error: 'Missing required query parameter: paymentId or walletAddress' },
+      { error: 'Missing required query parameter: paymentId, walletAddress, or paymentAccountId' },
       { status: 400 }
     );
   } catch (error) {

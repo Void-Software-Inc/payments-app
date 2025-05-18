@@ -33,6 +33,10 @@ export function Navbar() {
   const isPendingListPage = merchantId && pathname === `/merchant/${merchantId}/pending`;
   const isPendingPaymentDetailPage = merchantId && pathname.match(/^\/merchant\/[^\/]+\/pending\/[^\/]+$/);
   
+  // Check if we're on history pages
+  const isHistoryListPage = merchantId && pathname === `/merchant/${merchantId}/history`;
+  const isHistoryPaymentDetailPage = merchantId && pathname.match(/^\/merchant\/[^\/]+\/history\/[^\/]+$/);
+  
   // Check if we're on a profile page
   const isMainProfilePage = pathname === '/profile';
   const isMerchantProfilePage = merchantId && pathname === `/merchant/${merchantId}/profile`;
@@ -124,8 +128,20 @@ export function Navbar() {
       return;
     }
     
+    // If on history payment detail page, use router.back() to preserve navigation history
+    if (isHistoryPaymentDetailPage) {
+      router.back();
+      return;
+    }
+    
+    // If on history list page, go to merchant ID page
+    if (isHistoryListPage && merchantId) {
+      router.push(`/merchant/${merchantId}`);
+      return;
+    }
+    
     // If on merchant ID page (not QR code or deposit or ask-payment), go to /merchant
-    if (isMerchantIdPage && !isAskPaymentPage && !isPendingListPage && !isPendingPaymentDetailPage) {
+    if (isMerchantIdPage && !isAskPaymentPage && !isPendingListPage && !isPendingPaymentDetailPage && !isHistoryListPage && !isHistoryPaymentDetailPage) {
       router.push('/merchant');
       return;
     }
