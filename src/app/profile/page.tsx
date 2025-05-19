@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { usePaymentClient } from '@/hooks/usePaymentClient';
 import { usePaymentStore } from "@/store/usePaymentStore";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Store } from "lucide-react";
 
 // Import components from profile folder
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -23,6 +23,7 @@ interface UserData {
   accountType?: string;
   accountId?: string;
   profile?: UserProfile;
+  id?: string | null;
   [key: string]: any;
 }
 
@@ -95,13 +96,22 @@ export default function MerchantProfilePage() {
     loadProfileData();
   }, [currentAccount?.address, router]);
 
+  // Handle merchant button click
+  const handleMerchantClick = () => {
+    if (userData?.id) {
+      router.push('/merchant');
+    } else {
+      router.push('/merchant/create');
+    }
+  };
+
   // If not connected, show nothing while redirecting
   if (!currentAccount?.address) {
     return null;
   }
 
   return (
-    <div className="w-dvw h-dvh container mx-auto px-4 max-w-md pt-6">
+    <div className="w-dvw h-dvh container mx-auto px-4 max-w-md pt-6 flex flex-col">
       <div className="mb-6 flex justify-center items-center">
         <h1 className="text-2xl font-bold text-white">My Profile</h1>
       </div>
@@ -125,15 +135,25 @@ export default function MerchantProfilePage() {
             <ProfileSections username={profile?.username} />
           </div>
           
-          <div className="mt-8 flex justify-center">
-            <Button
-              variant="outline"
-              onClick={() => disconnect()}
-              className="bg-transparent text-[#78BCDB] border-[#78BCDB] font-bold rounded-full flex items-center gap-2 w-[200px] h-12 max-w-xs"
-            >
-              <LogOut className="h-5 w-5" />
-              Disconnect
-            </Button>
+          <div className="w-full mt-auto mb-8 flex justify-center">
+            <div className="flex-col space-y-4">
+              <Button
+                variant="outline"
+                onClick={handleMerchantClick}
+                className="mt-4 h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-sm border-none w-[230px]"
+              >
+                <Store className="h-5 w-5" />
+                Become a merchant
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => disconnect()}
+                className="bg-transparent text-[#78BCDB] text-sm border-[#78BCDB] font-bold rounded-full flex items-center gap-2 h-13 w-[230px]"
+              >
+                <LogOut className="h-5 w-5" />
+                Disconnect
+              </Button>
+            </div>
           </div>
         </>
       )}

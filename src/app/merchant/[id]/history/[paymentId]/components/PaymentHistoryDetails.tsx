@@ -52,7 +52,7 @@ export function PaymentHistoryDetails({ merchantId, paymentId }: PaymentHistoryD
 
   const openTransactionExplorer = () => {
     if (payment?.transactionHash) {
-      window.open(`https://suiscan.xyz/mainnet/tx/${payment.transactionHash}`, '_blank')
+      window.open(`https://suiscan.xyz/testnet/tx/${payment.transactionHash}`, '_blank')
     }
   }
 
@@ -158,10 +158,10 @@ export function PaymentHistoryDetails({ merchantId, paymentId }: PaymentHistoryD
         </p>
         
         <Button 
-          className="w-full mt-2 h-13 rounded-full bg-[#77BBD9] hover:bg-[#69a7c2] text-white"
+          className="mt-4 w-full h-12 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
           onClick={openTransactionExplorer}
         >
-          <ArrowUpRight className="mr-2" size={18} />
+          <ArrowUpRight className="size-6" />
           View on Explorer
         </Button>
       </CardContent>
