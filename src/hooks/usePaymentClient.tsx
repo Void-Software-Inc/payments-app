@@ -40,6 +40,12 @@ export interface PendingPayment {
   rawIntent: Intent;
 }
 
+// Add this type definition
+export type IntentStatus = {
+  stage: 'pending' | 'resolved' | 'executable';
+  deletable: boolean;
+};
+
 export function usePaymentClient() {
   const { getOrInitClient, resetClient } = usePaymentStore();
 
@@ -359,27 +365,11 @@ export function usePaymentClient() {
     try {
       const client = await getOrInitClient(userAddr, accountId);
       
-      // Get the intent to check if it exists and is expired
-      const intent = client.getIntent(intentKey);
+      // Get the intent status to check if it's deletable
+      const status = client.getIntentStatus(intentKey);
       
-      if (!intent) {
-        throw new Error("Payment not found");
-      }
-      
-      // Check if the payment is expired
-      let isExpired = false;
-      if (intent.fields?.expirationTime && intent.fields?.creationTime) {
-        const durationMs = Number(intent.fields.expirationTime);
-        const creationTime = Number(intent.fields.creationTime);
-        const expirationTimestamp = creationTime + durationMs;
-        const now = Date.now();
-        
-        isExpired = now > expirationTimestamp;
-      }
-      
-      // Only allow deletion of expired payments
-      if (!isExpired) {
-        throw new Error("Only expired payments can be deleted");
+      if (!status.deletable) {
+        throw new Error("This payment cannot be deleted");
       }
       
       // Delete the payment intent
@@ -387,6 +377,17 @@ export function usePaymentClient() {
     } catch (error) {
       console.error("Error deleting payment:", error);
       throw error;
+    }
+  };
+
+  // Get intent status directly from the client
+  const getIntentStatus = async (userAddr: string, intentKey: string): Promise<IntentStatus> => {
+    try {
+      const client = await getOrInitClient(userAddr);
+      return client.getIntentStatus(intentKey);
+    } catch (error) {
+      console.error("Error getting intent status:", error);
+      return { stage: 'pending', deletable: false };
     }
   };
 
@@ -405,6 +406,7 @@ export function usePaymentClient() {
     getIntent,
     issuePayment,
     makePayment,
-    deletePayment
+    deletePayment,
+    getIntentStatus
   };
 }

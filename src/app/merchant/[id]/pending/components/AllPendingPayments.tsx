@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CirclePlus, Clock, X, CheckCircle, Search } from "lucide-react"
 import { useCurrentAccount } from "@mysten/dapp-kit"
-import { usePaymentClient, PendingPayment } from "@/hooks/usePaymentClient"
+import { usePaymentClient, PendingPayment, IntentStatus } from "@/hooks/usePaymentClient"
 import { formatDistanceToNow } from "date-fns"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { Input } from "@/components/ui/input"
@@ -20,7 +20,7 @@ type StatusFilter = 'all' | 'pending' | 'executed' | 'expired';
 export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount();
-  const { getPendingPayments } = usePaymentClient();
+  const { getPendingPayments, getIntentStatus } = usePaymentClient();
   const { refreshTrigger } = usePaymentStore();
   
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([])
@@ -29,18 +29,26 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
-  // Check if a payment is expired
-  const checkPaymentExpiration = (payment: PendingPayment): PendingPayment => {
+  // Check payment status and update accordingly
+  const checkPaymentStatus = async (payment: PendingPayment): Promise<PendingPayment> => {
     // Clone the payment to avoid direct mutations
     const updatedPayment = { ...payment };
     
-    if (updatedPayment.rawIntent?.fields?.expirationTime) {
-      const expirationTime = Number(updatedPayment.rawIntent.fields.expirationTime);
-      const now = Date.now();
-      
-      // If the payment is expired and still shown as pending, update its status
-      if (now > expirationTime && updatedPayment.status === 'pending') {
-        updatedPayment.status = 'expired';
+    if (currentAccount?.address) {
+      try {
+        // Get payment status using the new getIntentStatus function
+        const status = await getIntentStatus(currentAccount.address, payment.intentKey);
+        
+        // Update payment status based on intentStatus
+        if (status.stage === 'resolved') {
+          updatedPayment.status = 'executed';
+        } else if (status.stage === 'pending' && status.deletable) {
+          updatedPayment.status = 'expired';
+        } else if (status.stage === 'executable') {
+          updatedPayment.status = 'pending';
+        }
+      } catch (error) {
+        console.error("Error checking payment status:", error);
       }
     }
     
@@ -62,8 +70,9 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
         // Convert the record to an array and sort by date (newest first)
         const paymentsArray = Object.values(paymentsRecord);
         
-        // Check for expired payments and update their status
-        const updatedPaymentsArray = paymentsArray.map(checkPaymentExpiration);
+        // Check status for each payment
+        const updatedPaymentsPromises = paymentsArray.map(checkPaymentStatus);
+        const updatedPaymentsArray = await Promise.all(updatedPaymentsPromises);
         
         updatedPaymentsArray.sort((a, b) => {
           const dateA = new Date(`${a.date} ${a.time}`);

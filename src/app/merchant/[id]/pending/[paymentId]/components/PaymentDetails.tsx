@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { QRCodeSVG } from 'qrcode.react'
 import { Copy, Check, Trash2 } from "lucide-react"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
-import { usePaymentClient, PendingPayment } from "@/hooks/usePaymentClient"
+import { usePaymentClient, PendingPayment, IntentStatus } from "@/hooks/usePaymentClient"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { formatSuiBalance } from "@/utils/formatters"
 import { Transaction } from "@mysten/sui/transactions"
@@ -22,28 +22,27 @@ interface PaymentDetailsProps {
 export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
-  const { getPaymentDetail, deletePayment } = usePaymentClient()
+  const { getPaymentDetail, deletePayment, getIntentStatus } = usePaymentClient()
   const { refreshTrigger, resetClient } = usePaymentStore()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   
   const [payment, setPayment] = useState<PendingPayment | null>(null)
+  const [intentStatus, setIntentStatus] = useState<IntentStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // Check if payment is expired
-  const isExpired = (): boolean => {
-    if (!payment || !payment.rawIntent.fields?.expirationTime || !payment.rawIntent.fields?.creationTime) {
-      return false;
+  // Check if payment is deletable
+  const checkPaymentStatus = async () => {
+    if (!currentAccount?.address || !payment) return;
+    
+    try {
+      const status = await getIntentStatus(currentAccount.address, payment.intentKey);
+      setIntentStatus(status);
+    } catch (error) {
+      console.error("Error checking payment status:", error);
     }
-    
-    const durationMs = Number(payment.rawIntent.fields.expirationTime);
-    const creationTime = Number(payment.rawIntent.fields.creationTime);
-    const expirationTimestamp = creationTime + durationMs;
-    const now = Date.now();
-    
-    return now > expirationTimestamp;
   }
 
   useEffect(() => {
@@ -66,6 +65,15 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         // Only update state if component is still mounted
         if (isMounted) {
           setPayment(paymentDetail)
+          
+          // Check payment status if we have a valid payment
+          if (paymentDetail) {
+            const status = await getIntentStatus(currentAccount.address, paymentDetail.intentKey);
+            if (isMounted) {
+              setIntentStatus(status);
+            }
+          }
+          
           setIsLoading(false)
         }
       } catch (error) {
@@ -95,7 +103,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   }
 
   const handleDelete = async () => {
-    if (!currentAccount?.address || !payment || !isExpired()) {
+    if (!currentAccount?.address || !payment || !intentStatus?.deletable) {
       return;
     }
     
@@ -233,6 +241,9 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         </div>
         <p className={`text-md mb-6 ${payment.status === 'expired' ? 'text-amber-500' : 'text-white'}`}>
           {payment.status}
+          {intentStatus?.deletable && payment.status !== 'expired' && (
+            <span className="ml-2 text-xs text-amber-500">(Deletable)</span>
+          )}
         </p>
         
         <div className="flex items-center justify-between mb-1">
@@ -274,7 +285,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           </div>
         </div>
 
-        {isExpired() && (
+        {intentStatus?.deletable && (
           <div className="">
             <Button
               onClick={handleDelete}
@@ -282,7 +293,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
               className="w-full bg-red-500 hover:bg-red-600 text-white"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              {isDeleting ? "Deleting..." : "Delete Expired Payment"}
+              {isDeleting ? "Deleting..." : "Delete Payment"}
             </Button>
           </div>
         )}
