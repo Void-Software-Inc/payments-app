@@ -40,7 +40,14 @@ export interface PendingPayment {
   rawIntent: Intent;
 }
 
-// Add this type definition
+export type DepStatus = {
+  name: string;
+  currentAddr: string;
+  currentVersion: number;
+  latestAddr: string;
+  latestVersion: number;
+};
+
 export type IntentStatus = {
   stage: 'pending' | 'resolved' | 'executable';
   deletable: boolean;
@@ -391,6 +398,66 @@ export function usePaymentClient() {
     }
   };
 
+  const getDepsStatus = async (userAddr: string): Promise<DepStatus[]> => {
+    try {
+      const client = await getOrInitClient(userAddr);
+      // Get extensions from the client
+      const extensions = client.extensions?.extensions || [];
+      
+      // Map extensions to DepStatus objects
+      const depsStatus: DepStatus[] = [];
+      
+      for (let i = 0; i < extensions.length; i++) {
+        const extension = extensions[i];
+        const name = extension.name || `Extension_${i}`;
+        
+        // Extract version information from the extension
+        // Using safe property access with optional chaining and defaults
+        const currentAddr = extension?.history?.[0]?.package || '';
+        const currentVersion = extension?.history?.[0]?.version || 0;
+        const latestAddr = extension?.history?.[extension?.history?.length - 1]?.package || currentAddr;
+        const latestVersion = extension?.history?.[extension?.history?.length - 1]?.version || currentVersion;
+        
+        depsStatus.push({
+          name,
+          currentAddr,
+          currentVersion,
+          latestAddr,
+          latestVersion
+        });
+      }
+      
+      return depsStatus;
+    } catch (error) {
+      console.error("Error getting dependencies status:", error);
+      return []; // Return empty array instead of throwing
+    }
+  };
+
+  const updateVerifiedDeps = async (userAddr: string, tx: Transaction) => {
+    try {
+      const client = await getOrInitClient(userAddr);
+      
+      // Get dependencies status first to check what needs updating
+      const deps = await getDepsStatus(userAddr);
+      const depsToUpdate = deps.filter(dep => dep.latestVersion > dep.currentVersion);
+      
+      if (depsToUpdate.length === 0) {
+        console.log("No dependencies need updating");
+        return;
+      }
+      
+      console.log(`Updating ${depsToUpdate.length} dependencies`);
+      
+      // Call the client's updateVerifiedDeps method with the transaction
+      // Pass only the transaction as that's what the function expects
+      client.updateVerifiedDeps(tx);
+    } catch (error) {
+      console.error("Error updating verified dependencies:", error);
+      throw error;
+    }
+  };
+
   return {
     initPaymentClient,
     refresh,
@@ -407,6 +474,8 @@ export function usePaymentClient() {
     issuePayment,
     makePayment,
     deletePayment,
-    getIntentStatus
+    getIntentStatus,
+    getDepsStatus,
+    updateVerifiedDeps
   };
 }
