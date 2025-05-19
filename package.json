@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@account.tech/core": "0.1.20",
-    "@account.tech/payment": "0.1.2",
+    "@account.tech/payment": "0.1.3",
     "@mysten/dapp-kit": "^0.16.2",
     "@mysten/sui": "^1.29.1",
     "@polymedia/suitcase-core": "^0.0.54",
