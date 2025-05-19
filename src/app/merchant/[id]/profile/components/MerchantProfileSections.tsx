@@ -41,7 +41,7 @@ export function MerchantProfileSections({ username }: MerchantProfileSectionsPro
     { title: "Shop Name", link: `/merchant/${merchantId}/profile/name`, value: shopName },
     { title: "Security", link: `/merchant/${merchantId}/security` },
     { title: "Transactions", link: `/merchant/${merchantId}/transactions` },
-    { title: "Recovery", link: `/merchant/${merchantId}/recovery` }
+    { title: "Recovery", link: `/merchant/${merchantId}/profile/recovery` }
   ];
 
   return (
