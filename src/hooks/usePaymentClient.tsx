@@ -204,11 +204,13 @@ export function usePaymentClient() {
         // Check if the payment is expired
         let status = extIntent.status || "pending";
         
-        if (status === "pending" && extIntent?.fields?.expirationTime) {
-          const expirationTime = Number(extIntent.fields.expirationTime);
+        if (status === "pending" && extIntent?.fields?.expirationTime && extIntent?.fields?.creationTime) {
+          const durationMs = Number(extIntent.fields.expirationTime);
+          const creationTime = Number(extIntent.fields.creationTime);
+          const expirationTimestamp = creationTime + durationMs;
           const now = Date.now();
           
-          if (now > expirationTime) {
+          if (now > expirationTimestamp) {
             status = "expired";
           }
         }
@@ -279,11 +281,13 @@ export function usePaymentClient() {
       // Check if the payment is expired
       let status = extIntent.status || "pending";
       
-      if (status === "pending" && extIntent?.fields?.expirationTime) {
-        const expirationTime = Number(extIntent.fields.expirationTime);
+      if (status === "pending" && extIntent?.fields?.expirationTime && extIntent?.fields?.creationTime) {
+        const durationMs = Number(extIntent.fields.expirationTime);
+        const creationTime = Number(extIntent.fields.creationTime);
+        const expirationTimestamp = creationTime + durationMs;
         const now = Date.now();
         
-        if (now > expirationTime) {
+        if (now > expirationTimestamp) {
           status = "expired";
         }
       }
@@ -346,11 +350,13 @@ export function usePaymentClient() {
       }
       
       // Check if the payment has expired
-      if (intent.fields?.expirationTime) {
-        const expirationTime = Number(intent.fields.expirationTime);
+      if (intent.fields?.expirationTime && intent.fields?.creationTime) {
+        const durationMs = Number(intent.fields.expirationTime);
+        const creationTime = Number(intent.fields.creationTime);
+        const expirationTimestamp = creationTime + durationMs;
         const now = Date.now();
         
-        if (now > expirationTime) {
+        if (now > expirationTimestamp) {
           throw new Error("Payment has expired and cannot be processed");
         }
       }

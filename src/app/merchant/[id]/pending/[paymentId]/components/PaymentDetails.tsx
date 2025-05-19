@@ -22,7 +22,7 @@ interface PaymentDetailsProps {
 export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
-  const { getPaymentDetail, deletePayment, getIntentStatus } = usePaymentClient()
+  const { getPaymentDetail, deletePayment, getIntentStatus, getIntent } = usePaymentClient()
   const { refreshTrigger, resetClient } = usePaymentStore()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
@@ -32,6 +32,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [intentInfo, setIntentInfo] = useState<string>("")
 
   // Check if payment is deletable
   const checkPaymentStatus = async () => {
@@ -71,6 +72,21 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
             const status = await getIntentStatus(currentAccount.address, paymentDetail.intentKey);
             if (isMounted) {
               setIntentStatus(status);
+              
+              // Debug info
+              const intent = await getIntent(currentAccount.address, paymentDetail.intentKey);
+              if (intent) {
+                const debugInfo = {
+                  stage: status.stage,
+                  deletable: status.deletable,
+                  creationTime: intent.fields?.creationTime ? new Date(Number(intent.fields.creationTime)).toLocaleString() : 'N/A',
+                  expirationDuration: intent.fields?.expirationTime ? `${Number(intent.fields.expirationTime) / (1000 * 60 * 60)} hours` : 'N/A',
+                  expiresAt: intent.fields?.creationTime && intent.fields?.expirationTime ? 
+                    new Date(Number(intent.fields.creationTime) + Number(intent.fields.expirationTime)).toLocaleString() : 'N/A',
+                  status: paymentDetail.status
+                };
+                setIntentInfo(JSON.stringify(debugInfo, null, 2));
+              }
             }
           }
           
@@ -241,9 +257,6 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         </div>
         <p className={`text-md mb-6 ${payment.status === 'expired' ? 'text-amber-500' : 'text-white'}`}>
           {payment.status}
-          {intentStatus?.deletable && payment.status !== 'expired' && (
-            <span className="ml-2 text-xs text-amber-500">(Deletable)</span>
-          )}
         </p>
         
         <div className="flex items-center justify-between mb-1">
@@ -254,6 +267,17 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
             ? new Date(Number(payment.rawIntent.fields.creationTime)).toLocaleString() 
             : `${payment.date} - ${payment.time}`}
         </p>
+        
+        {intentInfo && (
+          <>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-md text-gray-400">Debug Info</p>
+            </div>
+            <pre className="text-xs text-gray-400 mb-6 overflow-x-auto bg-[#1F1F24] p-2 rounded">
+              {intentInfo}
+            </pre>
+          </>
+        )}
         
         <div className="flex items-center justify-between mb-1">
               <p className="text-md text-gray-400">Your Link</p>
@@ -285,7 +309,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           </div>
         </div>
 
-        {intentStatus?.deletable && (
+        {intentStatus?.deletable && (payment.status === 'expired') && (
           <div className="">
             <Button
               onClick={handleDelete}

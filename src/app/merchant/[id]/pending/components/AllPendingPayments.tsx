@@ -39,12 +39,24 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
         // Get payment status using the new getIntentStatus function
         const status = await getIntentStatus(currentAccount.address, payment.intentKey);
         
-        // Update payment status based on intentStatus
+        // Check if the payment is actually expired by looking at timestamp
+        let isExpired = false;
+        if (payment.rawIntent?.fields?.expirationTime && payment.rawIntent?.fields?.creationTime) {
+          const durationMs = Number(payment.rawIntent.fields.expirationTime);
+          const creationTime = Number(payment.rawIntent.fields.creationTime);
+          const expirationTimestamp = creationTime + durationMs;
+          const now = Date.now();
+          
+          isExpired = now > expirationTimestamp;
+        }
+        
+        // Update payment status based on intentStatus and expiration check
         if (status.stage === 'resolved') {
           updatedPayment.status = 'executed';
-        } else if (status.stage === 'pending' && status.deletable) {
+        } else if (isExpired) {
+          // Only mark as expired if truly expired based on timestamps
           updatedPayment.status = 'expired';
-        } else if (status.stage === 'executable') {
+        } else if (status.stage === 'executable' || status.stage === 'pending') {
           updatedPayment.status = 'pending';
         }
       } catch (error) {

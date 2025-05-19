@@ -42,7 +42,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
         
         // Sort by date (newest first)
         payments.sort((a, b) => {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         });
         
         setCompletedPayments(payments)
@@ -110,6 +110,8 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
   const getRelativeTime = (dateStr: string): string => {
     try {
       const date = new Date(dateStr);
+      // Add 2 hours to match local time
+      date.setHours(date.getHours());
       return formatDistanceToNow(date, { addSuffix: true });
     } catch (e) {
       console.error("Error formatting date:", e);
@@ -119,6 +121,8 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
 
   const formatDate = (dateString: string): { date: string, time: string } => {
     const date = new Date(dateString);
+    // Add 2 hours to match local time
+    date.setHours(date.getHours());
     return {
       date: date.toLocaleDateString(),
       time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -203,7 +207,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
         </div>
       ) : (
         filteredPayments.map((payment, index) => {
-          const formattedDate = formatDate(payment.createdAt);
+          const formattedDate = formatDate(payment.updatedAt);
           const isReceived = payment.issuedBy === merchantId;
           
           return (
@@ -230,7 +234,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
                   <div className="flex justify-between">
                     <div className="min-w-[150px] max-w-[150px] md:min-w-[250px] md:max-w-[250px]">
                       <h3 className="text-md text-white truncate">{payment.description || 'Payment'}</h3>
-                      <p className="text-sm text-gray-400">{getRelativeTime(payment.createdAt)}</p>
+                      <p className="text-sm text-gray-400">{getRelativeTime(payment.updatedAt)}</p>
                     </div>
                     <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
                       <p className={`text-lg font-bold ${isReceived ? 'text-white' : 'text-red-500'}`}>
