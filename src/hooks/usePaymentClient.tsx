@@ -3,6 +3,7 @@ import { PaymentClient, Payment } from "@account.tech/payment";
 import { Transaction, TransactionResult } from "@mysten/sui/transactions";
 import { usePaymentStore } from "@/store/usePaymentStore";
 import { Intent } from "@account.tech/core";
+import { NETWORK_TYPE } from "@/constants/network";
 
 // Define interface for Intent with additional properties used in our app
 interface ExtendedIntent extends Intent {
@@ -464,6 +465,33 @@ export function usePaymentClient() {
     }
   };
 
+  const setRecoveryAddress = async (
+    userAddr: string,
+    accountId: string,
+    tx: Transaction,
+    backupAddress: string,
+  ) => {
+    try {
+      // Create a new client specifically for this operation
+      // Force reinitializing to ensure fresh state
+      console.log("Initializing fresh client for recovery address setup");
+      const client = await getOrInitClient(userAddr, accountId);     
+       
+      console.log('Calling setRecoveryAddress with a fresh client:', { 
+        tx, 
+        backupAddress,
+        userAddr,
+        accountId
+      });
+      
+      // Call the client method with the transaction and backup address
+      return client.setRecoveryAddress(tx, backupAddress);
+    } catch (error) {
+      console.error("Error setting recovery address:", error);
+      throw error;
+    }
+  };
+
   return {
     initPaymentClient,
     refresh,
@@ -482,6 +510,7 @@ export function usePaymentClient() {
     deletePayment,
     getIntentStatus,
     getDepsStatus,
-    updateVerifiedDeps
+    updateVerifiedDeps,
+    setRecoveryAddress
   };
 }
