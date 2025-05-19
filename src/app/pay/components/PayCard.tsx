@@ -22,11 +22,12 @@ const SUI_COIN_TYPE = "0x2::sui::SUI";
 
 // Interface for the component props
 interface PayCardProps {
-  onMakePayment: (paymentId: string, tip?: bigint) => Promise<void>;
+  onMakePayment: (paymentId: string, tip?: bigint, merchantId?: string) => Promise<void>;
   isProcessing: boolean;
+  merchantId?: string;
 }
 
-export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
+export function PayCard({ onMakePayment, isProcessing, merchantId }: PayCardProps) {
   const [paymentId, setPaymentId] = useState("");
   const [tipAmount, setTipAmount] = useState<string>("0");
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
       const tipInSmallestUnit = BigInt(Math.floor(tipValue * 1_000_000));
       
       // Call the onMakePayment function with the payment ID and tip amount
-      await onMakePayment(actualPaymentId, tipInSmallestUnit);
+      await onMakePayment(actualPaymentId, tipInSmallestUnit, merchantId);
       
       // Reset payment ID and tip after successful payment
       setPaymentId("");

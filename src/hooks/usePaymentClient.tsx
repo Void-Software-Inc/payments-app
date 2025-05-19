@@ -312,13 +312,26 @@ export function usePaymentClient() {
   };
 
   // Get an intent directly by its ID
-  const getIntent = async (userAddr: string, intentId: string) => {
+  const getIntent = async (userAddr: string, intentId: string, paymentAccountId?: string) => {
     try {
-      const client = await getOrInitClient(userAddr);
-      return client.getIntent(intentId);
+      const client = paymentAccountId !== undefined
+        ? await getOrInitClient(userAddr, paymentAccountId)
+        : await getOrInitClient(userAddr);
+      
+      console.log(`Fetching intent ${intentId} with client for user ${userAddr}${paymentAccountId ? ` and account ${paymentAccountId}` : ''}`);
+      
+      const intent = await client.getIntent(intentId);
+      
+      if (!intent) {
+        console.warn(`Intent not found: ${intentId}`);
+        throw new Error(`Intent not found: ${intentId}`);
+      }
+      
+      console.log(`Successfully found intent ${intentId}:`, intent);
+      return intent;
     } catch (error) {
-      console.error("Error getting intent:", error);
-      return null;
+      console.error(`Error getting intent ${intentId}:`, error);
+      throw error; // Propagate error instead of returning null
     }
   };
 
@@ -338,33 +351,24 @@ export function usePaymentClient() {
     userAddr: string, 
     tx: Transaction, 
     paymentId: string, 
-    tipAmount?: bigint
+    tipAmount?: bigint,
+    paymentAccountId?: string
   ) => {
     try {
-      const client = await getOrInitClient(userAddr);
+      // Initialize client with proper scoping - explicitly check for undefined
+      const client = paymentAccountId !== undefined
+        ? await getOrInitClient(userAddr, paymentAccountId)
+        : await getOrInitClient(userAddr);
       
-      // Get the intent to check if it's expired
-      const intent = client.getIntent(paymentId);
+      console.log(`Making payment for intent ${paymentId} by user ${userAddr}${paymentAccountId ? ` with account ${paymentAccountId}` : ''}`);
       
-      if (!intent) {
-        throw new Error("Payment not found");
-      }
-      
-      // Check if the payment has expired
-      if (intent.fields?.expirationTime && intent.fields?.creationTime) {
-        const durationMs = Number(intent.fields.expirationTime);
-        const creationTime = Number(intent.fields.creationTime);
-        const expirationTimestamp = creationTime + durationMs;
-        const now = Date.now();
-        
-        if (now > expirationTimestamp) {
-          throw new Error("Payment has expired and cannot be processed");
-        }
-      }
-      
+      // We don't need to get the intent separately, client.makePayment will do the validation
+      // Just call the makePayment function directly
       client.makePayment(tx, paymentId, tipAmount);
+      
+      console.log(`Payment transaction prepared for intent ${paymentId}`);
     } catch (error) {
-      console.error("Error making payment:", error);
+      console.error(`Error making payment for intent ${paymentId}:`, error);
       throw error;
     }
   };

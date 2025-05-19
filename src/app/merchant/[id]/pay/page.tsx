@@ -93,7 +93,7 @@ export default function MerchantPayPage() {
     initClient()
   }, [currentAccount?.address, initPaymentClient])
 
-  const handleMakePayment = async (paymentId: string, tip: bigint = BigInt(0)) => {
+  const handleMakePayment = async (paymentId: string, tip: bigint = BigInt(0), merchantId?: string) => {
     if (!currentAccount?.address) {
       toast.error("Please connect your wallet first")
       return
@@ -113,12 +113,34 @@ export default function MerchantPayPage() {
       setIsProcessing(true)
       
       // Get the intent details
-      const intentDetails = await getIntent(currentAccount.address, paymentId);
-      
-      if (!intentDetails) {
-        toast.error("Could not retrieve payment details. It may have already been paid.")
+      let intentDetails;
+      try {
+        intentDetails = await getIntent(currentAccount.address, paymentId, merchantId);
+      } catch (error: any) {
+        console.error("Error retrieving intent:", error);
+        toast.error("Could not retrieve payment details. The payment ID may be invalid.")
         setIsProcessing(false)
         return
+      }
+      
+      if (!intentDetails) {
+        toast.error("Payment not found. It may have already been paid or expired.")
+        setIsProcessing(false)
+        return
+      }
+      
+      // Check if the payment has expired
+      if (intentDetails.fields?.expirationTime && intentDetails.fields?.creationTime) {
+        const durationMs = Number(intentDetails.fields.expirationTime);
+        const creationTime = Number(intentDetails.fields.creationTime);
+        const expirationTimestamp = creationTime + durationMs;
+        const now = Date.now();
+        
+        if (now > expirationTimestamp) {
+          toast.error("This payment request has expired and cannot be processed.")
+          setIsProcessing(false)
+          return
+        }
       }
       
       // Extract intent information
@@ -154,12 +176,26 @@ export default function MerchantPayPage() {
       tx.setSender(currentAccount.address)
       
       // Call makePayment
-      await makePayment(
-        currentAccount.address,
-        tx,
-        paymentId,
-        tip
-      )
+      try {
+        await makePayment(
+          currentAccount.address,
+          tx,
+          paymentId,
+          tip,
+          merchantId
+        )
+      } catch (error: any) {
+        console.error("Error executing payment:", error);
+        if (error.message?.includes('not found')) {
+          toast.error("Payment not found. Please check the payment ID.")
+        } else if (error.message?.includes('expired')) {
+          toast.error("This payment request has expired.")
+        } else {
+          throw error; // Rethrow for other handling
+        }
+        setIsProcessing(false)
+        return
+      }
       
       // Execute the transaction
       const txResult = await signAndExecute({
@@ -282,7 +318,11 @@ export default function MerchantPayPage() {
             </Button>
           </div>
         ) : (
-          <PayCard onMakePayment={handleMakePayment} isProcessing={isProcessing} />
+          <PayCard 
+            onMakePayment={handleMakePayment} 
+            isProcessing={isProcessing} 
+            merchantId={merchantId}
+          />
         )}
       </div>
 
