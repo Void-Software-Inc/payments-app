@@ -8,12 +8,11 @@ import { useCurrentAccount } from "@mysten/dapp-kit"
 import { useCompletedPayments, CompletedPayment } from "@/hooks/useCompletedPayments"
 import { usePaymentStore } from "@/store/usePaymentStore"
 
-interface HistoryPaymentsProps {
-  merchantId: string
+interface HistoryProps {
   limit?: number
 }
 
-export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
+export function History({ limit }: HistoryProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
   const { getCompletedPaymentsByAccount, formatCoinAmount } = useCompletedPayments()
@@ -23,15 +22,15 @@ export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
 
   useEffect(() => {
     // Only proceed if we have the wallet address
-    if (!merchantId) {
+    if (!currentAccount?.address) {
       return;
     }
     
     const fetchCompletedPayments = async () => {
       setIsLoading(true)
       try {
-        // Fetch completed payments for the merchant
-        const payments = await getCompletedPaymentsByAccount(merchantId);
+        // Fetch completed payments for the user
+        const payments = await getCompletedPaymentsByAccount(currentAccount.address);
         
         // Sort by date (newest first)
         payments.sort((a, b) => {
@@ -50,10 +49,10 @@ export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
     }
 
     fetchCompletedPayments()
-  }, [merchantId, limit, refreshTrigger])
+  }, [currentAccount?.address, limit, refreshTrigger])
 
   const handlePaymentClick = (paymentId: string) => {
-    router.push(`/merchant/${merchantId}/history/${paymentId}`)
+    router.push(`/history/${paymentId}`)
   }
 
   const formatDate = (dateString: string): { date: string, time: string } => {
@@ -64,13 +63,12 @@ export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
     };
   }
 
-  // Always render the heading, link and progress bar
   return (
     <div className="w-full mt-10">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-xl font-bold text-white">History</h2>
         <Link 
-          href={`/merchant/${merchantId}/history`}
+          href="/history"
           className="text-[#77BBD9] hover:text-[#84d0f0] text-lg"
         >
           See All
@@ -93,7 +91,7 @@ export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
         <div className="relative">
           {completedPayments.map((payment, index) => {
             const formattedDate = formatDate(payment.createdAt);
-            const isReceived = payment.issuedBy === merchantId;
+            const isReceived = payment.issuedBy !== currentAccount?.address;
             
             return (
               <div 
@@ -122,12 +120,12 @@ export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
                         <p className="text-sm text-gray-400">{formattedDate.date} - {formattedDate.time}</p>
                       </div>
                       <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
-                        <p className={`text-lg font-bold truncate ${isReceived ? 'text-white' : 'text-red-500'}`}>
-                          {isReceived ? '+ ' : '- '}
-                          {payment.coinType.toLowerCase().includes('usdc') 
-                            ? '$' + formatCoinAmount(payment.paidAmount, payment.coinType).replace(' USDC', '')
-                            : formatCoinAmount(payment.paidAmount, payment.coinType)}
-                        </p>
+                                              <p className={`text-lg font-bold truncate ${isReceived ? 'text-white' : 'text-red-500'}`}>
+                        {isReceived ? '+ ' : '- '}
+                        {payment.coinType.toLowerCase().includes('usdc') 
+                          ? '$' + formatCoinAmount(payment.paidAmount, payment.coinType).replace(' USDC', '')
+                          : formatCoinAmount(payment.paidAmount, payment.coinType)}
+                      </p>
                       </div>
                     </div>
                   </div>
@@ -160,4 +158,4 @@ export function HistoryPayments({ merchantId, limit }: HistoryPaymentsProps) {
       )}
     </div>
   )
-} 
+}

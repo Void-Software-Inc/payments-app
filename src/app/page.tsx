@@ -3,6 +3,7 @@ import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { BalanceCard } from "@/components/BalanceCard";
+import { History } from "@/components/History";
 import { ActionButtonsCustomer } from '@/components/ActionButtonsCustomer';
 
 export default function Home() {
@@ -28,7 +29,8 @@ export default function Home() {
         {/* Balance Card */}
         <BalanceCard />
         
-        {/* Additional components can be added here later */}
+        {/* History */}
+        <History limit={4} />
       </div>
       <ActionButtonsCustomer />
     </main>

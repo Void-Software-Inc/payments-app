@@ -11,13 +11,13 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import React from "react"
 
-interface AllCompletedPaymentsProps {
-  merchantId: string
+interface AllUserCompletedPaymentsProps {
+  userAddress: string
 }
 
 type DirectionFilter = 'all' | 'received' | 'sent';
 
-export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) {
+export function AllUserCompletedPayments({ userAddress }: AllUserCompletedPaymentsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
   const { getCompletedPaymentsByAccount, formatCoinAmount } = useCompletedPayments()
@@ -30,15 +30,15 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
   const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all')
 
   useEffect(() => {
-    if (!merchantId) {
+    if (!userAddress) {
       return;
     }
 
     const fetchCompletedPayments = async () => {
       setIsLoading(true)
       try {
-        // Fetch completed payments for the merchant
-        const payments = await getCompletedPaymentsByAccount(merchantId);
+        // Fetch completed payments for the user
+        const payments = await getCompletedPaymentsByAccount(userAddress);
         
         // Sort by date (newest first)
         payments.sort((a, b) => {
@@ -57,7 +57,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
     }
 
     fetchCompletedPayments()
-  }, [merchantId, refreshTrigger])
+  }, [userAddress, refreshTrigger])
   
   // Filter payments when search term or direction filter changes
   useEffect(() => {
@@ -71,7 +71,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
     // Apply direction filter
     if (directionFilter !== 'all') {
       filtered = filtered.filter(payment => {
-        const isReceived = payment.issuedBy === merchantId;
+        const isReceived = payment.issuedBy !== userAddress;
         return (directionFilter === 'received' && isReceived) || 
                (directionFilter === 'sent' && !isReceived);
       });
@@ -90,7 +90,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
     }
     
     setFilteredPayments(filtered);
-  }, [searchTerm, directionFilter, completedPayments.length, merchantId,
+  }, [searchTerm, directionFilter, completedPayments.length, userAddress,
     // Use JSON.stringify to create a stable reference to completedPayments
     // but only consider the values we care about for filtering
     JSON.stringify(completedPayments.map(p => ({
@@ -103,7 +103,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
   ]);
 
   const handlePaymentClick = (paymentId: string) => {
-    router.push(`/merchant/${merchantId}/history/${paymentId}`)
+    router.push(`/history/${paymentId}`)
   }
 
   // Get relative time (e.g., "3 hours ago")
@@ -204,7 +204,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
       ) : (
         filteredPayments.map((payment, index) => {
           const formattedDate = formatDate(payment.createdAt);
-          const isReceived = payment.issuedBy === merchantId;
+          const isReceived = payment.issuedBy !== userAddress;
           
           return (
             <div 
@@ -233,7 +233,7 @@ export function AllCompletedPayments({ merchantId }: AllCompletedPaymentsProps) 
                       <p className="text-sm text-gray-400">{getRelativeTime(payment.createdAt)}</p>
                     </div>
                     <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
-                      <p className={`text-lg font-bold ${isReceived ? 'text-white' : 'text-red-500'}`}>
+                      <p className={`text-lg font-bold truncate ${isReceived ? 'text-white' : 'text-red-500'}`}>
                         {isReceived ? '+ ' : '- '}
                         {payment.coinType.toLowerCase().includes('usdc') 
                           ? '$' + formatCoinAmount(payment.paidAmount, payment.coinType).replace(' USDC', '')
