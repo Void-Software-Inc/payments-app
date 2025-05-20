@@ -68,18 +68,19 @@ export const prisma = globalForPrisma.prisma || (() => {
     } else {
       console.log(`Database URL detected (length: ${databaseUrl.length})`);
 
-      // Initialize database connection with proper configuration
-      config.datasources = {
-        db: {
-          url: databaseUrl
-        }
-      };
-      
-      // Connection pool settings for Prisma 5.x+
+      // Configure database connection - use only one method
+      // Don't use both datasourceUrl and datasources together
       if (process.env.NODE_ENV === 'production') {
         console.log('Setting up database connection for production');
-        // Use Prisma's native connection pool settings
+        // Use datasourceUrl for production
         config.datasourceUrl = databaseUrl;
+      } else {
+        // Use datasources for development
+        config.datasources = {
+          db: {
+            url: databaseUrl
+          }
+        };
       }
       
       // Add necessary connection options
@@ -90,9 +91,7 @@ export const prisma = globalForPrisma.prisma || (() => {
     
     console.log("Creating Prisma client with config:", JSON.stringify({
       ...config,
-      datasources: {
-        db: { url: config.datasources?.db?.url ? '[REDACTED]' : undefined }
-      },
+      datasources: config.datasources ? { db: { url: '[REDACTED]' } } : undefined,
       datasourceUrl: config.datasourceUrl ? '[REDACTED]' : undefined
     }));
     
