@@ -30,58 +30,12 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   const [paymentId, setPaymentId] = useState("");
   const [tipAmount, setTipAmount] = useState<string>("0");
   const [error, setError] = useState<string | null>(null);
-  const [isExpired, setIsExpired] = useState<boolean>(false);
   const [balanceInSui, setBalanceInSui] = useState<bigint>(BigInt(0));
   const [balanceInUsdc, setBalanceInUsdc] = useState<bigint>(BigInt(0));
   const [usdcDecimals, setUsdcDecimals] = useState<number>(6); // Default USDC decimals is usually 6
   
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
-  const { getIntent } = usePaymentClient();
-  
-  // Check if payment is expired when ID changes
-  useEffect(() => {
-    const checkPaymentExpiration = async () => {
-      // Reset expired state
-      setIsExpired(false);
-      setError(null);
-      
-      // Only proceed if we have a payment ID and connected account
-      if (!paymentId.trim() || !currentAccount?.address) {
-        return;
-      }
-      
-      // Extract actual payment ID if it's a link
-      let actualPaymentId = paymentId.trim();
-      if (actualPaymentId.includes('/')) {
-        const parts = actualPaymentId.split('/');
-        actualPaymentId = parts[parts.length - 1];
-      }
-      
-      try {
-        const intentDetails = await getIntent(currentAccount.address, actualPaymentId);
-        
-        if (!intentDetails) {
-          return;
-        }
-        
-        // Check expiration time
-        if (intentDetails.fields?.expirationTime) {
-          const expirationTime = Number(intentDetails.fields.expirationTime);
-          const now = Date.now();
-          
-          if (now > expirationTime) {
-            setIsExpired(true);
-            setError("This payment request has expired and cannot be processed.");
-          }
-        }
-      } catch (error) {
-        console.error("Error checking payment expiration:", error);
-      }
-    };
-    
-    checkPaymentExpiration();
-  }, [paymentId, currentAccount?.address, getIntent]);
   
   // Fetch balances when the component loads
   useEffect(() => {
@@ -122,9 +76,8 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   
   const handlePaymentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPaymentId(e.target.value);
-    // Clear error and expired state when user types
+    // Clear error when user types
     if (error) setError(null);
-    if (isExpired) setIsExpired(false);
   };
   
   const handleTipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,11 +119,6 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
       return;
     }
     
-    if (isExpired) {
-      setError("This payment request has expired and cannot be processed.");
-      return;
-    }
-    
     // Extract payment ID from link if it's a link format
     let actualPaymentId = paymentId.trim();
     
@@ -198,9 +146,9 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
       // Reset payment ID and tip after successful payment
       setPaymentId("");
       setTipAmount("0");
-    } catch (error) {
-      console.error("Error in handlePay:", error);
-      // Error handling is done in the parent component
+    } catch (error: any) {
+      console.error("Payment error:", error);
+      setError(error.message || "Failed to process payment");
     }
   };
   
@@ -214,16 +162,17 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
         <CardContent className="space-y-6 mt-1 mb-3">
             {/* Payment ID Input */}
             <div className="space-y-2 mt-2">
-            <Label htmlFor="paymentId" className="text-md text-[#c8c8c8] font-medium">
+            <Label htmlFor="payment-id" className="text-md text-[#c8c8c8] font-medium">
                 Paste link or id
             </Label>
             <div className="flex items-center gap-2">
                 <Input
-                id="paymentId"
+                id="payment-id"
+                type="text"
                 value={paymentId}
                 onChange={handlePaymentIdChange}
                 placeholder="suipay/..."
-                className={`h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg ${isExpired ? 'border-amber-500' : ''}`}
+                className={`h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg ${error ? 'border-amber-500' : ''}`}
                 autoComplete="off"
                 />
             </div>
@@ -278,7 +227,6 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
             
             {error && (
               <div className="text-amber-500 text-sm mt-2 flex items-center">
-                {isExpired && <X className="h-4 w-4 mr-1" />}
                 {error}
               </div>
             )}
@@ -286,10 +234,10 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
             {/* Pay Button */}
             <Button
             onClick={handlePay}
-            className={`w-full h-13 mt-4 rounded-full ${isExpired ? 'bg-gray-500 cursor-not-allowed' : 'bg-[#78BCDB] hover:bg-[#68ACCC]'} text-white font-medium text-lg`}
-            disabled={isProcessing || !paymentId.trim() || isExpired}
+            className="w-full h-13 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
+            disabled={isProcessing || !paymentId.trim() || !!error}
             >
-            {isProcessing ? "Processing..." : isExpired ? "Payment Expired" : "Pay Now"}
+            {isProcessing ? "Processing..." : "Pay Now"}
             </Button>
         </CardContent>
         </Card>

@@ -14,6 +14,7 @@ export interface CompletedPayment {
   description: string;
   transactionHash: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export function useCompletedPayments() {

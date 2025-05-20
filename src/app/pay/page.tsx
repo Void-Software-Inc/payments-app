@@ -123,11 +123,13 @@ export default function PayPage() {
       }
       
       // Check if the payment has expired
-      if (intentDetails.fields?.expirationTime) {
-        const expirationTime = Number(intentDetails.fields.expirationTime);
+      if (intentDetails.fields?.expirationTime && intentDetails.fields?.creationTime) {
+        const durationMs = Number(intentDetails.fields.expirationTime);
+        const creationTime = Number(intentDetails.fields.creationTime);
+        const expirationTimestamp = creationTime + durationMs;
         const now = Date.now();
         
-        if (now > expirationTime) {
+        if (now > expirationTimestamp) {
           toast.error("This payment request has expired and cannot be processed.")
           setIsProcessing(false)
           return

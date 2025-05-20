@@ -9,12 +9,12 @@ import { useCompletedPayments, CompletedPayment } from "@/hooks/useCompletedPaym
 import { truncateMiddle } from "@/utils/formatters"
 import { Button } from "@/components/ui/button"
 
-interface PaymentHistoryDetailsProps {
-  merchantId: string
+interface PaymentUserDetailsProps {
+  userAddress: string
   paymentId: string
 }
 
-export function PaymentHistoryDetails({ merchantId, paymentId }: PaymentHistoryDetailsProps) {
+export function PaymentUserDetails({ userAddress, paymentId }: PaymentUserDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
   const { formatCoinAmount } = useCompletedPayments()
@@ -56,8 +56,8 @@ export function PaymentHistoryDetails({ merchantId, paymentId }: PaymentHistoryD
     }
   }
 
-  // Check if the payment was received (issued by the merchant) or sent (paid by the merchant)
-  const isReceived = payment?.issuedBy === merchantId
+  // Check if the payment was received (not issued by the user) or sent (issued by the user)
+  const isReceived = payment?.issuedBy !== userAddress
 
   if (isLoading) {
     return (

@@ -15,9 +15,9 @@ export function ProfileSections({ username }: ProfileSectionsProps) {
   const displayName = username || "User";
   
   const sections: ProfileSection[] = [
-    { title: "Username", link: "/username", value: displayName },
-    { title: "Security", link: "/security" },
-    { title: "Transactions", link: "/transactions" }
+    { title: "Username", link: "/profile/username", value: displayName },
+    { title: "Security", link: "/profile/security" },
+    { title: "Transactions", link: "/profile/transactions" }
   ];
 
   return (
