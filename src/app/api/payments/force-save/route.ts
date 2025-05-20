@@ -116,6 +116,12 @@ export async function POST(request: NextRequest) {
     
     // Directly use createMany which is more reliable with connection pooling
     try {
+      // Log connection information for debugging
+      console.log("FORCE-SAVE: Database connection info:", {
+        hasEnvVars: !!process.env.DATABASE_URL,
+        provider: process.env.DATABASE_PROVIDER || 'unknown'
+      });
+      
       // Use template literal to insert createdAt directly, avoiding prisma.raw()
       const query = `
         INSERT INTO "CompletedPayment" (
@@ -136,8 +142,12 @@ export async function POST(request: NextRequest) {
           "description" = EXCLUDED."description",
           "transactionHash" = EXCLUDED."transactionHash",
           "updatedAt" = NOW()
+        RETURNING "id", "paymentId"
       `;
 
+      console.log("FORCE-SAVE: Executing SQL query");
+      
+      // Execute the query with parameters
       const result = await prisma.$executeRawUnsafe(
         query,
         paymentData.id,
@@ -151,7 +161,7 @@ export async function POST(request: NextRequest) {
         paymentData.transactionHash
       );
       
-      console.log("FORCE-SAVE: Database operation successful");
+      console.log("FORCE-SAVE: Database operation successful, result:", result);
       return NextResponse.json({ 
         success: true, 
         paymentId: paymentData.paymentId,
@@ -159,10 +169,52 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       console.error("FORCE-SAVE: Database error:", error);
-      return NextResponse.json(
-        { error: "Database operation failed", details: String(error) },
-        { status: 500 }
-      );
+      
+      // Try alternative approach with Prisma create for better error handling
+      try {
+        console.log("FORCE-SAVE: Trying alternative save approach with Prisma client");
+        
+        const result = await prisma.completedPayment.upsert({
+          where: { paymentId: paymentData.paymentId },
+          update: {
+            paidAmount: paymentData.paidAmount,
+            tipAmount: paymentData.tipAmount,
+            issuedBy: paymentData.issuedBy,
+            paidBy: paymentData.paidBy,
+            coinType: paymentData.coinType,
+            description: paymentData.description,
+            transactionHash: paymentData.transactionHash,
+          },
+          create: {
+            id: paymentData.id,
+            paymentId: paymentData.paymentId,
+            paidAmount: paymentData.paidAmount,
+            tipAmount: paymentData.tipAmount,
+            issuedBy: paymentData.issuedBy,
+            paidBy: paymentData.paidBy,
+            coinType: paymentData.coinType,
+            description: paymentData.description,
+            transactionHash: paymentData.transactionHash,
+          },
+        });
+        
+        console.log("FORCE-SAVE: Alternative save successful:", result);
+        return NextResponse.json({
+          success: true,
+          paymentId: paymentData.paymentId,
+          message: "Payment saved successfully using alternative method"
+        });
+      } catch (alternativeError) {
+        console.error("FORCE-SAVE: Alternative save approach failed:", alternativeError);
+        return NextResponse.json(
+          { 
+            error: "Database operation failed", 
+            details: String(error),
+            alternativeError: String(alternativeError)
+          },
+          { status: 500 }
+        );
+      }
     }
   } catch (error) {
     console.error("FORCE-SAVE: Unhandled error:", error);
