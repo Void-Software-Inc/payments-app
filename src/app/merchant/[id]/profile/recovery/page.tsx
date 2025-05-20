@@ -1,18 +1,82 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import RecoveryAddressForm from './components/RecoveryAddressForm';
+import RecoveryAddressForm, { RecoveryAddressList } from './components/RecoveryAddressForm';
+import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { usePaymentClient } from '@/hooks/usePaymentClient';
+import { toast } from 'sonner';
 
 export default function RecoveryPage() {
   const params = useParams();
   const id = params.id as string;
+  const currentAccount = useCurrentAccount();
+  const userAddress = currentAccount?.address;
+  const { getPaymentAccount } = usePaymentClient();
+  const [recoveryAddresses, setRecoveryAddresses] = useState<Array<{ address: string, username?: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch recovery addresses on component mount
+  useEffect(() => {
+    const fetchRecoveryAddresses = async () => {
+      if (!userAddress) return;
+      
+      try {
+        setIsLoading(true);
+        const account = await getPaymentAccount(userAddress, id);
+        
+        if (account?.members && account.members.length > 1) {
+          // Get all members after index 0 (which is the primary owner)
+          const recoveryMemberList = account.members.slice(1).map(member => ({
+            address: member.address,
+            username: member.username
+          }));
+          
+          setRecoveryAddresses(recoveryMemberList);
+        }
+      } catch (error) {
+        console.error('Error fetching recovery addresses:', error);
+        toast.error('Failed to load recovery addresses');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecoveryAddresses();
+  }, [userAddress, id]);
 
   return (
-    <div className="py-4">
-      <p className="text-gray-400 text-sm mb-6">
-        Set up a recovery address that can help you regain access to your account if you lose your keys.
-      </p>
-      <RecoveryAddressForm accountId={id} />
+    <div className="h-dvh w-dvw flex justify-center items-center">
+      <div className="w-[90%] h-full pt-6 space-y-6">
+        {/* Main Content */}
+        <div className="flex items-center justify-center mb-6">
+          <h1 className='text-2xl font-bold text-white'>Account Recovery</h1>
+        </div>
+        
+        {/* Form Card */}
+        <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
+          <CardContent className="space-y-6 my-3">
+            <p className="text-gray-400 text-sm">
+              Set up a recovery address that can help you regain access to your account if you lose your keys.
+            </p>
+            <RecoveryAddressForm accountId={id} />
+          </CardContent>
+        </Card>
+        
+        {/* Recovery Addresses Card */}
+        {(isLoading || recoveryAddresses.length > 0) && (
+          <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg mt-6">
+            <CardContent className="space-y-4 my-0">
+              <h3 className="text-md font-medium text-[#c8c8c8]">Current Recovery Addresses</h3>
+              <RecoveryAddressList 
+                recoveryAddresses={recoveryAddresses} 
+                isLoading={isLoading} 
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 } 
