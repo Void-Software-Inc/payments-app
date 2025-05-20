@@ -1,77 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, prismaUtils } from '@/lib/prisma';
 
+/**
+ * GET /api/test-db
+ * Tests database connectivity and provides diagnostic info
+ * Useful for troubleshooting database issues in production
+ */
 export async function GET(request: NextRequest) {
   try {
-    console.log("Testing database connection...");
+    console.log("API: Testing database connection");
     
-    // Test database connectivity
-    let dbStatus = "Unknown";
-    let tables = [];
+    // Test connection with a simple query
+    const connectionTest = await prismaUtils.testConnection();
     
+    // Get environment info (safely, without exposing sensitive data)
+    const envInfo = {
+      nodeEnv: process.env.NODE_ENV,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      hasDirectUrl: !!process.env.DIRECT_URL,
+      nextRuntime: process.env.NEXT_RUNTIME || 'unknown',
+      postgresSSL: process.env.POSTGRES_SSL === 'true',
+    };
+
+    // Basic Prisma client info
+    const clientInfo = {
+      initialized: !!prisma,
+      hasCompletedPaymentModel: !!prisma?.completedPayment,
+    };
+
+    // Attempt to perform a count operation
+    let countResult;
     try {
-      // Attempt to query the database schema to verify connectivity
-      const result = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
-      tables = result as any[];
-      dbStatus = "Connected";
-      console.log("Database connection successful", { tables });
-    } catch (dbError) {
-      console.error("Database connection failed:", dbError);
-      dbStatus = "Error connecting to database";
+      const count = await prisma.completedPayment.count();
+      countResult = { success: true, count };
+    } catch (countError) {
+      countResult = { 
+        success: false, 
+        error: String(countError),
+      };
     }
-    
-    // Check if CompletedPayment model is accessible
-    let modelStatus = "Unknown";
-    
+
+    // Attempt to retrieve a sample payment for testing
+    let samplePaymentResult;
     try {
-      if (prisma.completedPayment) {
-        const count = await prisma.completedPayment.count();
-        modelStatus = `Available (${count} records)`;
-        console.log("CompletedPayment model is accessible", { count });
-      } else {
-        modelStatus = "Not available";
-        console.error("CompletedPayment model is not available");
-      }
-    } catch (modelError) {
-      console.error("Error accessing CompletedPayment model:", modelError);
-      modelStatus = "Error accessing model";
+      const payment = await prisma.completedPayment.findFirst({
+        select: { 
+          id: true,
+          paymentId: true,
+          createdAt: true
+        }
+      });
+      samplePaymentResult = { 
+        success: !!payment, 
+        hasPayment: !!payment,
+        paymentSample: payment ? {
+          id: payment.id,
+          created: payment.createdAt,
+        } : null
+      };
+    } catch (sampleError) {
+      samplePaymentResult = { 
+        success: false, 
+        error: String(sampleError)
+      };
     }
-    
-    // Test Prisma's schema understanding
-    let schemaStatus = "Unknown";
-    let modelNames: string | any[] = [];
-    
-    try {
-      //@ts-ignore
-      modelNames = Object.keys(prisma).filter(key => !key.startsWith('$') && !key.startsWith('_'));
-      schemaStatus = `Found ${modelNames.length} models`;
-      console.log("Prisma schema models:", modelNames);
-    } catch (schemaError) {
-      console.error("Error getting schema info:", schemaError);
-      schemaStatus = "Error getting schema info";
-    }
-    
+
+    console.log("API: Database test results:", {
+      connectionTest: connectionTest.success ? 'success' : 'failed',
+      countResult: countResult.success ? 'success' : 'failed',
+      samplePaymentResult: samplePaymentResult.success ? 'success' : 'failed'
+    });
+
     return NextResponse.json({
-      success: true,
-      database: {
-        status: dbStatus,
-        tables: tables, 
-      },
-      prisma: {
-        modelStatus,
-        schemaStatus,
-        modelNames
-      },
-      environment: {
-        nodeEnv: process.env.NODE_ENV,
-        databaseUrl: !!process.env.DATABASE_URL ? "Configured" : "Missing",
-        directUrl: !!process.env.DIRECT_URL ? "Configured" : "Missing"
-      }
+      success: connectionTest.success && countResult.success,
+      timestamp: new Date().toISOString(),
+      environment: envInfo,
+      client: clientInfo,
+      connection: connectionTest,
+      countOperation: countResult,
+      samplePayment: samplePaymentResult
     });
   } catch (error) {
-    console.error('Error in test-db endpoint:', error);
+    console.error('Error testing database connection:', error);
     return NextResponse.json(
-      { error: 'Database test failed', details: String(error) },
+      { 
+        success: false, 
+        error: 'Failed to test database connection', 
+        details: String(error),
+        timestamp: new Date().toISOString(),
+      },
       { status: 500 }
     );
   }

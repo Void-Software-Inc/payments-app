@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { HandCoins, ArrowUpDown } from "lucide-react"
+import { HandCoins, ArrowUpDown, RefreshCw } from "lucide-react"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { useCompletedPayments, CompletedPayment } from "@/hooks/useCompletedPayments"
 import { usePaymentStore } from "@/store/usePaymentStore"
@@ -15,10 +15,12 @@ interface HistoryProps {
 export function History({ limit }: HistoryProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
-  const { getCompletedPaymentsByAccount, formatCoinAmount } = useCompletedPayments()
-  const { refreshTrigger } = usePaymentStore()
+  const { getCompletedPaymentsByAccount, formatCoinAmount, isLoading: hookLoading } = useCompletedPayments()
+  const { refreshTrigger, triggerRefresh } = usePaymentStore()
   const [completedPayments, setCompletedPayments] = useState<CompletedPayment[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     // Only proceed if we have the wallet address
@@ -28,7 +30,9 @@ export function History({ limit }: HistoryProps) {
     
     const fetchCompletedPayments = async () => {
       setIsLoading(true)
+      setError(null)
       try {
+        console.log(`History: Fetching payments for ${currentAccount.address}, attempt ${retryCount + 1}`)
         // Fetch completed payments for the user
         const payments = await getCompletedPaymentsByAccount(currentAccount.address);
         
@@ -39,9 +43,11 @@ export function History({ limit }: HistoryProps) {
         
         // Apply limit if specified
         const limitedPayments = limit ? payments.slice(0, limit) : payments;
+        console.log(`History: Successfully fetched ${payments.length} payments`)
         setCompletedPayments(limitedPayments)
       } catch (error) {
-        console.error("Error fetching completed payments:", error)
+        console.error("History: Error fetching completed payments:", error)
+        setError("Failed to load payment history")
         setCompletedPayments([])
       } finally {
         setIsLoading(false)
@@ -49,10 +55,15 @@ export function History({ limit }: HistoryProps) {
     }
 
     fetchCompletedPayments()
-  }, [currentAccount?.address, limit, refreshTrigger])
+  }, [currentAccount?.address, limit, refreshTrigger, retryCount])
 
   const handlePaymentClick = (paymentId: string) => {
     router.push(`/history/${paymentId}`)
+  }
+
+  const handleRefresh = () => {
+    setRetryCount(prev => prev + 1)
+    triggerRefresh()
   }
 
   const formatDate = (dateString: string): { date: string, time: string } => {
@@ -67,12 +78,24 @@ export function History({ limit }: HistoryProps) {
     <div className="w-full mt-10">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-xl font-bold text-white">History</h2>
-        <Link 
-          href="/history"
-          className="text-[#77BBD9] hover:text-[#84d0f0] text-lg"
-        >
-          See All
-        </Link>
+        <div className="flex items-center gap-2">
+          {error && (
+            <button 
+              onClick={handleRefresh}
+              className="flex items-center gap-1 text-[#77BBD9] hover:text-[#84d0f0]"
+              disabled={isLoading}
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Retry</span>
+            </button>
+          )}
+          <Link 
+            href="/history"
+            className="text-[#77BBD9] hover:text-[#84d0f0] text-lg"
+          >
+            See All
+          </Link>
+        </div>
       </div>
       {/* Progress bar */}
       <div className="w-full h-1 bg-[#3B3C3F] rounded-full mb-2">
@@ -82,6 +105,13 @@ export function History({ limit }: HistoryProps) {
       {isLoading ? (
         <div className="w-full">
           <div className="animate-pulse bg-gray-800 h-40 rounded-lg"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-[#2A2A2F] rounded-lg p-6 mt-4">
+          <p className="text-red-400 text-center mb-2">{error}</p>
+          <p className="text-white text-center text-sm">
+            This could be due to a database connection issue. Please try again later.
+          </p>
         </div>
       ) : completedPayments.length === 0 ? (
         <div className="bg-[#2A2A2F] rounded-lg p-6 mt-4">
@@ -120,7 +150,7 @@ export function History({ limit }: HistoryProps) {
                         <p className="text-sm text-gray-400">{formattedDate.date} - {formattedDate.time}</p>
                       </div>
                       <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
-                                              <p className={`text-lg font-bold truncate ${isReceived ? 'text-white' : 'text-red-500'}`}>
+                        <p className={`text-lg font-bold truncate ${isReceived ? 'text-white' : 'text-red-500'}`}>
                         {isReceived ? '+ ' : '- '}
                         {payment.coinType.toLowerCase().includes('usdc') 
                           ? '$' + formatCoinAmount(payment.paidAmount, payment.coinType).replace(' USDC', '')

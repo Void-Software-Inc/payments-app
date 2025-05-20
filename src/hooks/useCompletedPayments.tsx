@@ -30,20 +30,54 @@ export function useCompletedPayments() {
     setError(null);
     
     try {
+      console.log(`useCompletedPayments: Fetching payments for account ${paymentAccountId}${role ? `, role: ${role}` : ''}`);
+      
       const roleParam = role ? `&role=${role}` : '';
-      const response = await fetch(`/api/payments?paymentAccountId=${paymentAccountId}${roleParam}`);
+      const url = `/api/payments?paymentAccountId=${encodeURIComponent(paymentAccountId)}${roleParam}`;
+      console.log(`useCompletedPayments: Fetching from URL: ${url}`);
+      
+      const response = await fetch(url, { 
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        // Make sure credentials are included if needed
+        credentials: 'same-origin'
+      });
+      
+      console.log(`useCompletedPayments: Response status: ${response.status}`);
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch payments');
+        let errorMessage = `Server error: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('useCompletedPayments: API error response:', errorData);
+        } catch (parseError) {
+          console.error('useCompletedPayments: Failed to parse error response:', parseError);
+          // Try to get the text if JSON parsing fails
+          const errorText = await response.text();
+          console.error('useCompletedPayments: Error response text:', errorText);
+        }
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+        console.log(`useCompletedPayments: Received ${data?.data?.length || 0} payments`);
+      } catch (parseError) {
+        console.error('useCompletedPayments: Failed to parse JSON response:', parseError);
+        const responseText = await response.text();
+        console.error('useCompletedPayments: Response text:', responseText.substring(0, 500)); // Log first 500 chars
+        throw new Error('Failed to parse server response');
+      }
+      
       return data.data || [];
     } catch (error) {
-      console.error('Error fetching completed payments:', error);
+      console.error('useCompletedPayments: Error fetching completed payments:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
-      return [];
+      
+      // Rethrow to let the component handle it
+      throw error;
     } finally {
       setIsLoading(false);
     }
