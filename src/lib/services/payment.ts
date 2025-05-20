@@ -127,6 +127,13 @@ export const PaymentService = {
    */
   async getCompletedPaymentsByAddress(walletAddress: string, role?: 'payer' | 'issuer') {
     try {
+      console.log(`PaymentService: Fetching payments for address: ${walletAddress}, role: ${role || 'any'}`);
+      
+      if (!prisma || typeof prisma.completedPayment === 'undefined') {
+        console.error("PaymentService: Prisma client not properly initialized for fetching payments");
+        throw new Error("Prisma client not properly initialized");
+      }
+      
       const where = role === 'payer' 
         ? { paidBy: walletAddress }
         : role === 'issuer'
@@ -138,12 +145,26 @@ export const PaymentService = {
               ]
             };
 
-      return await prisma.completedPayment.findMany({
-        where,
-        orderBy: { createdAt: 'desc' }
-      });
+      // Add logging to track the query
+      console.log(`PaymentService: Executing query with where clause:`, JSON.stringify(where));
+
+      // Use try-catch around the actual database operation
+      try {
+        const payments = await prisma.completedPayment.findMany({
+          where,
+          orderBy: { createdAt: 'desc' }
+        });
+        
+        console.log(`PaymentService: Successfully fetched ${payments.length} payments`);
+        return payments;
+      } catch (dbError) {
+        console.error('PaymentService: Database error when fetching payments:', dbError);
+        // Rethrow with more context to help troubleshooting
+        throw new Error(`Database error when fetching payments: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+      }
     } catch (error) {
-      console.error('Error fetching completed payments by address:', error);
+      console.error('PaymentService: Error fetching completed payments by address:', error);
+      // Return empty array but log the error for debugging
       return [];
     }
   },

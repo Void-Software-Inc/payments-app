@@ -52,6 +52,9 @@ export const prisma = globalForPrisma.prisma || (() => {
   // In development, show more verbose logs
   if (process.env.NODE_ENV === 'development') {
     config.log = ['query', 'info', 'warn', 'error'];
+  } else {
+    // For production, enable query logging for debugging but only temporarily
+    config.log = ['error', 'warn', 'query'];
   }
   
   try {
@@ -72,6 +75,24 @@ export const prisma = globalForPrisma.prisma || (() => {
         }
       };
       
+      // Add connection pooling configuration for production
+      if (process.env.NODE_ENV === 'production') {
+        console.log('Configuring connection pool for production');
+        config.connection = {
+          // Lower max connections to avoid hitting limits
+          max: 10,
+          // Shorter idle timeout to release connections faster
+          idleTimeoutMs: 15000,
+          // Properly handle RLS-enabled databases
+          options: {
+            // Ensure query timeout is set to a reasonable value
+            statement_timeout: 10000,
+            // Set this to allow RLS policies to work properly
+            application_name: 'payments-app'
+          }
+        };
+      }
+      
       // Add necessary connection options
       if (process.env.POSTGRES_SSL === 'true') {
         console.log('Using SSL for database connection');
@@ -82,7 +103,8 @@ export const prisma = globalForPrisma.prisma || (() => {
       ...config,
       datasources: {
         db: { url: config.datasources?.db?.url ? '[REDACTED]' : undefined }
-      }
+      },
+      connection: config.connection ? '(connection pool configured)' : undefined
     }));
     
     return new PrismaClient(config);
@@ -111,5 +133,19 @@ if (prisma.completedPayment) {
 } else {
   console.error("CompletedPayment model NOT available in Prisma client!");
 }
+
+// Add methods for database diagnostics
+export const prismaUtils = {
+  async testConnection() {
+    try {
+      // Try a simple query to test the connection
+      const count = await prisma.completedPayment.count();
+      return { success: true, count };
+    } catch (error) {
+      console.error("Database connection test failed:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+};
 
 export default prisma
