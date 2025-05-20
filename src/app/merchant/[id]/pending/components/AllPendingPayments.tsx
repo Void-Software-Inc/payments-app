@@ -260,16 +260,6 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
           <Clock className="h-4 w-4 mr-1" /> Pending
         </Button>
         <Button 
-          variant={statusFilter === 'executed' ? 'default' : 'outline'} 
-          size="sm"
-          className={statusFilter === 'executed' 
-            ? 'bg-[#78BCDB] hover:bg-[#68ACCC] text-white' 
-            : 'border-[#3B3C3F] bg-[#1F1F23] text-white'}
-          onClick={() => setStatusFilter('executed')}
-        >
-          <CheckCircle className="h-4 w-4 mr-1" /> Completed
-        </Button>
-        <Button 
           variant={statusFilter === 'expired' ? 'default' : 'outline'} 
           size="sm"
           className={statusFilter === 'expired' 

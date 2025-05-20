@@ -136,7 +136,7 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false }: Payment
           <Button 
             type="submit"
             disabled={isProcessing}
-            className="w-full h-14 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
+            className="w-full h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
           >
             {isProcessing ? (
               <>
