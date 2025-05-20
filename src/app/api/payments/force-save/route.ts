@@ -100,66 +100,33 @@ export async function POST(request: NextRequest) {
     
     console.log("FORCE-SAVE: Attempting direct database save");
     
-    // Parse creationTime if provided, or use current time
-    let createdAt = 'NOW()';
-    if (body.creationTime) {
-      try {
-        const date = new Date(Number(body.creationTime));
-        if (!isNaN(date.getTime())) {
-          // Format as ISO string for PostgreSQL
-          createdAt = `'${date.toISOString()}'::timestamptz`;
-        }
-      } catch (e) {
-        console.warn("FORCE-SAVE: Invalid creationTime, using current time:", e);
-      }
-    }
-    
-    // Directly use createMany which is more reliable with connection pooling
+    // Try with Prisma upsert which handles prepared statements better
     try {
-      // Log connection information for debugging
-      console.log("FORCE-SAVE: Database connection info:", {
-        hasEnvVars: !!process.env.DATABASE_URL,
-        provider: process.env.DATABASE_PROVIDER || 'unknown'
+      console.log("FORCE-SAVE: Using Prisma upsert method");
+      
+      const result = await prisma.completedPayment.upsert({
+        where: { paymentId: paymentData.paymentId },
+        update: {
+          paidAmount: paymentData.paidAmount,
+          tipAmount: paymentData.tipAmount,
+          issuedBy: paymentData.issuedBy,
+          paidBy: paymentData.paidBy,
+          coinType: paymentData.coinType,
+          description: paymentData.description,
+          transactionHash: paymentData.transactionHash,
+        },
+        create: {
+          id: paymentData.id,
+          paymentId: paymentData.paymentId,
+          paidAmount: paymentData.paidAmount,
+          tipAmount: paymentData.tipAmount,
+          issuedBy: paymentData.issuedBy,
+          paidBy: paymentData.paidBy,
+          coinType: paymentData.coinType,
+          description: paymentData.description,
+          transactionHash: paymentData.transactionHash,
+        },
       });
-      
-      // Use template literal to insert createdAt directly, avoiding prisma.raw()
-      const query = `
-        INSERT INTO "CompletedPayment" (
-          "id", "paymentId", "paidAmount", "tipAmount", "issuedBy", 
-          "paidBy", "coinType", "description", "transactionHash", 
-          "createdAt", "updatedAt"
-        ) 
-        VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, ${createdAt}, NOW()
-        )
-        ON CONFLICT ("paymentId") 
-        DO UPDATE SET 
-          "paidAmount" = EXCLUDED."paidAmount",
-          "tipAmount" = EXCLUDED."tipAmount",
-          "issuedBy" = EXCLUDED."issuedBy",
-          "paidBy" = EXCLUDED."paidBy",
-          "coinType" = EXCLUDED."coinType",
-          "description" = EXCLUDED."description",
-          "transactionHash" = EXCLUDED."transactionHash",
-          "updatedAt" = NOW()
-        RETURNING "id", "paymentId"
-      `;
-
-      console.log("FORCE-SAVE: Executing SQL query");
-      
-      // Execute the query with parameters
-      const result = await prisma.$executeRawUnsafe(
-        query,
-        paymentData.id,
-        paymentData.paymentId,
-        paymentData.paidAmount,
-        paymentData.tipAmount,
-        paymentData.issuedBy,
-        paymentData.paidBy,
-        paymentData.coinType,
-        paymentData.description,
-        paymentData.transactionHash
-      );
       
       console.log("FORCE-SAVE: Database operation successful, result:", result);
       return NextResponse.json({ 
@@ -168,49 +135,74 @@ export async function POST(request: NextRequest) {
         message: "Payment saved successfully" 
       });
     } catch (error) {
-      console.error("FORCE-SAVE: Database error:", error);
+      console.error("FORCE-SAVE: First attempt failed:", error);
       
-      // Try alternative approach with Prisma create for better error handling
+      // Try with raw query but use a unique statement name based on the paymentId
       try {
-        console.log("FORCE-SAVE: Trying alternative save approach with Prisma client");
+        console.log("FORCE-SAVE: Trying with raw query approach");
         
-        const result = await prisma.completedPayment.upsert({
-          where: { paymentId: paymentData.paymentId },
-          update: {
-            paidAmount: paymentData.paidAmount,
-            tipAmount: paymentData.tipAmount,
-            issuedBy: paymentData.issuedBy,
-            paidBy: paymentData.paidBy,
-            coinType: paymentData.coinType,
-            description: paymentData.description,
-            transactionHash: paymentData.transactionHash,
-          },
-          create: {
-            id: paymentData.id,
-            paymentId: paymentData.paymentId,
-            paidAmount: paymentData.paidAmount,
-            tipAmount: paymentData.tipAmount,
-            issuedBy: paymentData.issuedBy,
-            paidBy: paymentData.paidBy,
-            coinType: paymentData.coinType,
-            description: paymentData.description,
-            transactionHash: paymentData.transactionHash,
-          },
-        });
+        // Use a unique statement name to avoid conflicts with prepared statements
+        const uniqueStatementName = `insert_payment_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
         
-        console.log("FORCE-SAVE: Alternative save successful:", result);
-        return NextResponse.json({
-          success: true,
+        // Parse creationTime if provided, or use current time
+        let createdAt = new Date();
+        if (body.creationTime) {
+          try {
+            const timestamp = Number(body.creationTime);
+            if (!isNaN(timestamp)) {
+              createdAt = new Date(timestamp);
+            }
+          } catch (e) {
+            console.warn("FORCE-SAVE: Invalid creationTime, using current time:", e);
+          }
+        }
+        
+        // Use prisma.$queryRaw which doesn't keep the prepared statement cached
+        const result = await prisma.$queryRaw`
+          INSERT INTO "CompletedPayment" (
+            "id", "paymentId", "paidAmount", "tipAmount", "issuedBy", 
+            "paidBy", "coinType", "description", "transactionHash", 
+            "createdAt", "updatedAt"
+          ) 
+          VALUES (
+            ${paymentData.id}, 
+            ${paymentData.paymentId}, 
+            ${paymentData.paidAmount}, 
+            ${paymentData.tipAmount}, 
+            ${paymentData.issuedBy}, 
+            ${paymentData.paidBy}, 
+            ${paymentData.coinType}, 
+            ${paymentData.description}, 
+            ${paymentData.transactionHash}, 
+            ${createdAt}, 
+            ${new Date()}
+          )
+          ON CONFLICT ("paymentId") 
+          DO UPDATE SET 
+            "paidAmount" = EXCLUDED."paidAmount",
+            "tipAmount" = EXCLUDED."tipAmount",
+            "issuedBy" = EXCLUDED."issuedBy",
+            "paidBy" = EXCLUDED."paidBy",
+            "coinType" = EXCLUDED."coinType",
+            "description" = EXCLUDED."description",
+            "transactionHash" = EXCLUDED."transactionHash",
+            "updatedAt" = ${new Date()}
+        `;
+        
+        console.log("FORCE-SAVE: Raw query successful:", result);
+        return NextResponse.json({ 
+          success: true, 
           paymentId: paymentData.paymentId,
-          message: "Payment saved successfully using alternative method"
+          message: "Payment saved successfully with raw query" 
         });
-      } catch (alternativeError) {
-        console.error("FORCE-SAVE: Alternative save approach failed:", alternativeError);
+      } catch (rawQueryError) {
+        console.error("FORCE-SAVE: Raw query failed:", rawQueryError);
+        
         return NextResponse.json(
           { 
             error: "Database operation failed", 
             details: String(error),
-            alternativeError: String(alternativeError)
+            rawQueryError: String(rawQueryError)
           },
           { status: 500 }
         );
