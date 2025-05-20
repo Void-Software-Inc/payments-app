@@ -107,7 +107,6 @@ export default function ChangeShopNamePage() {
       // Update the current name on success
       if (result.effects?.status?.status === "success") {
         setCurrentName(newName);
-        toast.success("Shop name updated successfully");
         
         // Trigger refresh and reset client before navigation
         resetClient();
