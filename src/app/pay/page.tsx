@@ -31,37 +31,67 @@ async function saveCompletedPayment(data: {
   transactionHash: string;
   creationTime?: string | null;
 }) {
-  try {
-    // Ensure paidAmount is never zero if it can be avoided
-    if (data.paidAmount === '0') {
-      console.warn("Warning: Attempting to save payment with zero amount", data);
-    } else {
-      console.log("Saving payment with amount:", data.paidAmount);
-    }
-    
-    console.log("Attempting to save payment to database:", data);
-    
-    const response = await fetch('/api/payments', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-    
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-      console.error('Error saving payment:', responseData);
+  // Function to retry save with exponential backoff
+  const retrySave = async (attempt = 1, maxAttempts = 3, delay = 1000) => {
+    try {
+      // Ensure paidAmount is never zero if it can be avoided
+      if (data.paidAmount === '0') {
+        console.warn("Warning: Attempting to save payment with zero amount", data);
+      } else {
+        console.log("Saving payment with amount:", data.paidAmount);
+      }
+      
+      console.log(`Attempt ${attempt}/${maxAttempts}: Saving payment to database:`, data);
+      
+      const response = await fetch('/api/payments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      // Get response text for debugging
+      const responseText = await response.text();
+      let responseData;
+      
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.log("Response is not valid JSON:", responseText);
+      }
+      
+      console.log(`Save attempt ${attempt} response:`, response.status, responseData || responseText);
+      
+      if (!response.ok) {
+        console.error(`Error saving payment (attempt ${attempt}):`, responseData || responseText);
+        
+        // If we have retries left, try again after a delay
+        if (attempt < maxAttempts) {
+          console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return retrySave(attempt + 1, maxAttempts, delay * 2);
+        }
+        return false;
+      }
+      
+      console.log("Payment saved successfully:", responseData);
+      return true;
+    } catch (error) {
+      console.error(`Error saving payment to database (attempt ${attempt}):`, error);
+      
+      // If we have retries left, try again after a delay
+      if (attempt < maxAttempts) {
+        console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return retrySave(attempt + 1, maxAttempts, delay * 2);
+      }
       return false;
     }
-    
-    console.log("Payment saved successfully:", responseData);
-    return true;
-  } catch (error) {
-    console.error('Error saving payment to database:', error);
-    return false;
-  }
+  };
+  
+  // Start the retry process
+  return retrySave();
 }
 
 export default function PayPage() {
@@ -298,34 +328,74 @@ export default function PayPage() {
         try {
           console.log("Attempting backup payment save with minimal information");
           
-          // This backup mechanism ensures payment data is saved even if the primary save mechanism fails
-          // It uses a different API endpoint with more robust error handling to guarantee data persistence
-          // The 'backup' flag is just for tracking which save method succeeded
-          fetch('/api/payments/force-save', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              paymentId,
-              paidAmount: amount,
-              tipAmount: tip.toString(),
-              issuedBy: issuedBy || 'undefined',
-              paidBy: currentAccount.address,
-              coinType,
-              description: intentDescription,
-              transactionHash: txResult.digest,
-              creationTime: creationTime,
-              backup: true
-            }),
-          }).then(response => {
-            if (response.ok) {
-              console.log("Backup payment save successful");
-            } else {
-              console.error("Backup payment save failed");
+          // Enhanced backup mechanism with retry functionality
+          const saveData = {
+            paymentId,
+            paidAmount: amount,
+            tipAmount: tip.toString(),
+            issuedBy: issuedBy || 'undefined',
+            paidBy: currentAccount.address,
+            coinType,
+            description: intentDescription,
+            transactionHash: txResult.digest,
+            creationTime: creationTime,
+            backup: true
+          };
+          
+          console.log("Backup payment data:", saveData);
+          
+          // Function to retry save with exponential backoff
+          const retrySave = async (attempt = 1, maxAttempts = 3, delay = 1000) => {
+            try {
+              const response = await fetch('/api/payments/force-save', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(saveData),
+              });
+              
+              const responseText = await response.text();
+              console.log(`Backup save attempt ${attempt} response:`, response.status, responseText);
+              
+              if (response.ok) {
+                console.log("Backup payment save successful");
+                return true;
+              } else {
+                console.error(`Backup save attempt ${attempt} failed:`, response.status, responseText);
+                
+                // If we have retries left, try again after a delay
+                if (attempt < maxAttempts) {
+                  console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  return retrySave(attempt + 1, maxAttempts, delay * 2);
+                } else {
+                  console.error("All backup save attempts failed");
+                  return false;
+                }
+              }
+            } catch (err) {
+              console.error(`Error in backup save attempt ${attempt}:`, err);
+              
+              // If we have retries left, try again after a delay
+              if (attempt < maxAttempts) {
+                console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return retrySave(attempt + 1, maxAttempts, delay * 2);
+              } else {
+                console.error("All backup save attempts failed");
+                return false;
+              }
             }
-          }).catch(err => {
-            console.error("Error in backup payment save:", err);
+          };
+          
+          // Start the retry process
+          retrySave().then(success => {
+            if (success) {
+              console.log("Backup payment was successfully saved after retries");
+            } else {
+              console.error("Failed to save backup payment after multiple attempts");
+            }
           });
         } catch (backupError) {
           console.error("Failed to execute backup save:", backupError);
