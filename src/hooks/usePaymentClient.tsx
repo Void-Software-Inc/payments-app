@@ -69,7 +69,7 @@ export function usePaymentClient() {
       const client = await getOrInitClient(userAddr);
       await client.refresh();
     } catch (error) {
-      console.error("Error refreshing multisig:", error);
+      console.error("Error refreshing user:", error);
       throw error;
     }
   };
@@ -405,48 +405,56 @@ export function usePaymentClient() {
     }
   };
 
-  const getDepsStatus = async (userAddr: string): Promise<DepStatus[]> => {
+  const getDepsStatus = async (userAddr: string, paymentAccountId?: string): Promise<DepStatus[]> => {
     try {
-      const client = await getOrInitClient(userAddr);
-      // Get extensions from the client
-      const extensions = client.extensions?.extensions || [];
+      const client =  paymentAccountId != undefined ? 
+      await getOrInitClient(userAddr, paymentAccountId) 
+      : await getOrInitClient(userAddr);
       
-      // Map extensions to DepStatus objects
-      const depsStatus: DepStatus[] = [];
-      
-      for (let i = 0; i < extensions.length; i++) {
-        const extension = extensions[i];
-        const name = extension.name || `Extension_${i}`;
-        
-        // Extract version information from the extension
-        // Using safe property access with optional chaining and defaults
-        const currentAddr = extension?.history?.[0]?.package || '';
-        const currentVersion = extension?.history?.[0]?.version || 0;
-        const latestAddr = extension?.history?.[extension?.history?.length - 1]?.package || currentAddr;
-        const latestVersion = extension?.history?.[extension?.history?.length - 1]?.version || currentVersion;
-        
-        depsStatus.push({
-          name,
-          currentAddr,
-          currentVersion,
-          latestAddr,
-          latestVersion
-        });
+      if (!client) {
+        console.error("Failed to initialize client for getDepsStatus");
+        return [];
       }
       
-      return depsStatus;
+      try {
+        const depsStatus = client.getDepsStatus();
+        console.log("Raw deps status result:", JSON.stringify(depsStatus));
+        
+        if (!depsStatus) {
+          console.error("getDepsStatus returned null or undefined");
+          return [];
+        }
+        
+        if (!Array.isArray(depsStatus)) {
+          console.error("getDepsStatus did not return an array:", typeof depsStatus);
+          return [];
+        }
+        
+/*        depsStatus.forEach((dep, index) => {
+          console.log(`Dependency ${index}:`, dep);
+        });
+ */       
+        return depsStatus;
+      } catch (innerError) {
+        console.error("Error calling client.getDepsStatus():", innerError);
+        return [];
+      }
     } catch (error) {
       console.error("Error getting dependencies status:", error);
-      return []; // Return empty array instead of throwing
+      return [];
     }
   };
 
-  const updateVerifiedDeps = async (userAddr: string, tx: Transaction) => {
+  const updateVerifiedDeps = async (userAddr: string, tx: Transaction, paymentAccountId?: string) => {
     try {
-      const client = await getOrInitClient(userAddr);
-      
+      const client =  paymentAccountId != undefined ? 
+      await getOrInitClient(userAddr, paymentAccountId) 
+      : await getOrInitClient(userAddr);
+
       // Get dependencies status first to check what needs updating
-      const deps = await getDepsStatus(userAddr);
+      const deps = paymentAccountId != undefined ? 
+      await getDepsStatus(userAddr, paymentAccountId) 
+      : await getDepsStatus(userAddr);
       const depsToUpdate = deps.filter(dep => dep.latestVersion > dep.currentVersion);
       
       if (depsToUpdate.length === 0) {

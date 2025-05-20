@@ -21,7 +21,6 @@ export function MerchantProfileSections({ username }: MerchantProfileSectionsPro
   const merchantId = params.id as string;
   const currentAccount = useCurrentAccount();
   const { getPaymentAccount } = usePaymentClient();
-  const { refreshTrigger } = usePaymentStore();
   const [shopName, setShopName] = useState<string>("Shop");
   
   useEffect(() => {
@@ -35,11 +34,11 @@ export function MerchantProfileSections({ username }: MerchantProfileSectionsPro
         console.error("Error fetching payment account:", err);
       });
     }
-  }, [currentAccount?.address, merchantId, getPaymentAccount, refreshTrigger]);
+  }, [currentAccount?.address, merchantId, getPaymentAccount]);
   
   const sections: ProfileSection[] = [
     { title: "Shop Name", link: `/merchant/${merchantId}/profile/name`, value: shopName },
-    { title: "Security", link: `/merchant/${merchantId}/security` },
+    { title: "Security", link: `/merchant/${merchantId}/profile/security` },
     { title: "Transactions", link: `/merchant/${merchantId}/transactions` },
     { title: "Recovery", link: `/merchant/${merchantId}/profile/recovery` }
   ];
