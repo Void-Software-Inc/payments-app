@@ -33,9 +33,6 @@ export function Navbar() {
   const isPendingListPage = merchantId && pathname === `/merchant/${merchantId}/pending`;
   const isPendingPaymentDetailPage = merchantId && pathname.match(/^\/merchant\/[^\/]+\/pending\/[^\/]+$/);
   
-  // Check if we're on history pages
-  const isHistoryListPage = merchantId && pathname === `/merchant/${merchantId}/history`;
-  const isHistoryPaymentDetailPage = merchantId && pathname.match(/^\/merchant\/[^\/]+\/history\/[^\/]+$/);
   
   // Check if we're on a profile page
   const isMainProfilePage = pathname === '/profile';
@@ -52,7 +49,6 @@ export function Navbar() {
   const isAnyQRCodePage = isMainQRCodePage || isMerchantQRCodePage;
   const isAnyProfilePage = isMainProfilePage || isMerchantProfilePage || isAnyQRCodePage;
   
-  // Track navigation history for back button
   useEffect(() => {
     // Store path in ref before it changes
     if (pathname && previousPathRef.current !== pathname) {
@@ -128,20 +124,10 @@ export function Navbar() {
       return;
     }
     
-    // If on history payment detail page, use router.back() to preserve navigation history
-    if (isHistoryPaymentDetailPage) {
-      router.back();
-      return;
-    }
-    
-    // If on history list page, go to merchant ID page
-    if (isHistoryListPage && merchantId) {
-      router.push(`/merchant/${merchantId}`);
-      return;
-    }
+   
     
     // If on merchant ID page (not QR code or deposit or ask-payment), go to /merchant
-    if (isMerchantIdPage && !isAskPaymentPage && !isPendingListPage && !isPendingPaymentDetailPage && !isHistoryListPage && !isHistoryPaymentDetailPage) {
+    if (isMerchantIdPage && !isAskPaymentPage && !isPendingListPage && !isPendingPaymentDetailPage) {
       router.push('/merchant');
       return;
     }

@@ -19,81 +19,6 @@ import { ActionButtonsCustomer } from "@/components/ActionButtonsCustomer"
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
 
-// Function to save a completed payment to the database
-async function saveCompletedPayment(data: {
-  paymentId: string;
-  paidAmount: string;
-  tipAmount: string;
-  issuedBy: string;
-  paidBy: string;
-  coinType: string;
-  description?: string;
-  transactionHash: string;
-  creationTime?: string | null;
-}) {
-  // Function to retry save with exponential backoff
-  const retrySave = async (attempt = 1, maxAttempts = 3, delay = 1000) => {
-    try {
-      // Ensure paidAmount is never zero if it can be avoided
-      if (data.paidAmount === '0') {
-        console.warn("Warning: Attempting to save payment with zero amount", data);
-      } else {
-        console.log("Saving payment with amount:", data.paidAmount);
-      }
-      
-      console.log(`Attempt ${attempt}/${maxAttempts}: Saving payment to database:`, data);
-      
-      const response = await fetch('/api/payments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      
-      // Get response text for debugging
-      const responseText = await response.text();
-      let responseData;
-      
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        console.log("Response is not valid JSON:", responseText);
-      }
-      
-      console.log(`Save attempt ${attempt} response:`, response.status, responseData || responseText);
-      
-      if (!response.ok) {
-        console.error(`Error saving payment (attempt ${attempt}):`, responseData || responseText);
-        
-        // If we have retries left, try again after a delay
-        if (attempt < maxAttempts) {
-          console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return retrySave(attempt + 1, maxAttempts, delay * 2);
-        }
-        return false;
-      }
-      
-      console.log("Payment saved successfully:", responseData);
-      return true;
-    } catch (error) {
-      console.error(`Error saving payment to database (attempt ${attempt}):`, error);
-      
-      // If we have retries left, try again after a delay
-      if (attempt < maxAttempts) {
-        console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return retrySave(attempt + 1, maxAttempts, delay * 2);
-      }
-      return false;
-    }
-  };
-  
-  // Start the retry process
-  return retrySave();
-}
-
 export default function PayPage() {
   const params = useParams()
   const router = useRouter()
@@ -166,19 +91,11 @@ export default function PayPage() {
         }
       }
       
-      // Extract intent information properly accessing the fields
       console.log("Intent details:", intentDetails);
       console.log("Intent fields:", intentDetails.fields);
       
       // Access description from fields.description which is how it's structured in the Intent
       const intentDescription = intentDetails.fields?.description || '';
-      
-      // Extract creation time if available
-      const creationTime = intentDetails.fields?.creationTime ? 
-        String(intentDetails.fields.creationTime) : null;
-      console.log("Intent creation time:", creationTime);
-      
-      console.log("Final intent description:", intentDescription);
       
       // Cast intent to access creator property via type assertion
       const intentFields = intentDetails.fields as any;
@@ -189,19 +106,6 @@ export default function PayPage() {
                      (intentDetails as any).accountId ||
                      intentFields?.issuedBy || 
                      (paymentId.length >= 66 ? paymentId.substring(0, 66) : '');
-      
-      console.log("Final issuedBy value:", issuedBy || 'unknown (will be filled from events)');
-      
-      // Ensure we get a valid non-zero amount by checking both intentFields.amount and args.amount
-      const argsAmount = (intentDetails as any)?.args?.amount?.toString();
-      const fieldsAmount = intentFields?.amount?.toString();
-      const amount = argsAmount || fieldsAmount || '0';
-      console.log("Payment amount from intent:", amount, "argsAmount:", argsAmount, "fieldsAmount:", fieldsAmount);
-      
-      // Verify we have a meaningful amount to process
-      if (amount === '0') {
-        console.warn("Warning: Payment amount is zero - check intent structure");
-      }
       
       // Create a new transaction
       const tx = new Transaction()
@@ -245,161 +149,21 @@ export default function PayPage() {
               event?.type?.includes('::payment_events::PaymentExecuted')
             );
             
-            console.log("Found payment event:", paymentEvent ? "YES" : "NO", 
-              paymentEvent ? JSON.stringify(paymentEvent) : "");
-            
             if (paymentEvent?.parsedJson) {
               const data = paymentEvent.parsedJson;
               
-              // Add detailed logging for the issued_by field
-              console.log("Payment event data:", data);
-              console.log("Event issued_by field:", data.issued_by);
-              
-              const paymentDetails = {
-                paymentId: data.payment_id,
-                timestamp: data.timestamp,
-                paidAmount: data.amount,
-                tipAmount: data.tip || tip.toString() || '0',
-                issuedBy: data.issued_by || issuedBy
-              };
-              
-              console.log("Payment executed:", paymentDetails);
-              
-              // Verify amount is not zero
-              if (paymentDetails.paidAmount === '0' || paymentDetails.paidAmount === 0) {
-                console.warn("Warning: Event shows payment amount is zero, using intent amount instead");
-                paymentDetails.paidAmount = amount;
-              }
-              
-              // Use the correct issuedBy value in completed payment
-              await saveCompletedPayment({
-                paymentId: paymentDetails.paymentId,
-                paidAmount: paymentDetails.paidAmount.toString(),
-                tipAmount: paymentDetails.tipAmount.toString(),
-                issuedBy: paymentDetails.issuedBy || issuedBy || 'undefined',
-                paidBy: currentAccount.address,
-                coinType,
-                description: intentDescription,
-                transactionHash: txResult.digest,
-                creationTime: creationTime,
-              });
-              
               // Show success message with formatted amount
-              const formattedAmount = formatSuiBalance(BigInt(paymentDetails.paidAmount));
-              toast.success(`Paid ${formattedAmount} to ${truncateMiddle(paymentDetails.issuedBy)}`);
-            } else {
-              // Fallback if we couldn't extract details from the event
-              // Still attempt to save the payment with what we know
-              await saveCompletedPayment({
-                paymentId,
-                paidAmount: amount,
-                tipAmount: tip.toString(),
-                issuedBy: issuedBy || 'undefined',
-                paidBy: currentAccount.address,
-                coinType,
-                description: intentDescription,
-                transactionHash: txResult.digest,
-                creationTime: creationTime,
-              });
+              const formattedAmount = formatSuiBalance(BigInt(data.amount));
+              toast.success(`Paid ${formattedAmount} to ${truncateMiddle(data.issued_by || issuedBy)}`);
             }
           } catch (error) {
             console.warn("Error parsing payment events:", error);
-            // Attempt to save with basic information even if parsing failed
-            await saveCompletedPayment({
-              paymentId,
-              paidAmount: amount,
-              tipAmount: tip.toString(),
-              issuedBy: issuedBy || 'undefined',
-              paidBy: currentAccount.address,
-              coinType,
-              description: intentDescription,
-              transactionHash: txResult.digest,
-              creationTime: creationTime,
-            });
           }
         }
         
         // Reset client and trigger refresh
         resetClient();
         usePaymentStore.getState().triggerRefresh();
-        
-        // Ensure we save payment data regardless of event processing
-        // This is a backup approach that will save minimal information if the event parsing fails
-        try {
-          console.log("Attempting backup payment save with minimal information");
-          
-          // Enhanced backup mechanism with retry functionality
-          const saveData = {
-            paymentId,
-            paidAmount: amount,
-            tipAmount: tip.toString(),
-            issuedBy: issuedBy || 'undefined',
-            paidBy: currentAccount.address,
-            coinType,
-            description: intentDescription,
-            transactionHash: txResult.digest,
-            creationTime: creationTime,
-            backup: true
-          };
-          
-          console.log("Backup payment data:", saveData);
-          
-          // Function to retry save with exponential backoff
-          const retrySave = async (attempt = 1, maxAttempts = 3, delay = 1000) => {
-            try {
-              const response = await fetch('/api/payments/force-save', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(saveData),
-              });
-              
-              const responseText = await response.text();
-              console.log(`Backup save attempt ${attempt} response:`, response.status, responseText);
-              
-              if (response.ok) {
-                console.log("Backup payment save successful");
-                return true;
-              } else {
-                console.error(`Backup save attempt ${attempt} failed:`, response.status, responseText);
-                
-                // If we have retries left, try again after a delay
-                if (attempt < maxAttempts) {
-                  console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
-                  await new Promise(resolve => setTimeout(resolve, delay));
-                  return retrySave(attempt + 1, maxAttempts, delay * 2);
-                } else {
-                  console.error("All backup save attempts failed");
-                  return false;
-                }
-              }
-            } catch (err) {
-              console.error(`Error in backup save attempt ${attempt}:`, err);
-              
-              // If we have retries left, try again after a delay
-              if (attempt < maxAttempts) {
-                console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                return retrySave(attempt + 1, maxAttempts, delay * 2);
-              } else {
-                console.error("All backup save attempts failed");
-                return false;
-              }
-            }
-          };
-          
-          // Start the retry process
-          retrySave().then(success => {
-            if (success) {
-              console.log("Backup payment was successfully saved after retries");
-            } else {
-              console.error("Failed to save backup payment after multiple attempts");
-            }
-          });
-        } catch (backupError) {
-          console.error("Failed to execute backup save:", backupError);
-        }
         
         // Redirect to a success page or home
         setTimeout(() => router.push('/'), 1500)
