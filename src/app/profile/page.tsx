@@ -11,7 +11,6 @@ import { LogOut, Store } from "lucide-react";
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
 import { ProfileAvatar } from '@/app/profile/components/ProfileAvatar';
 import { ProfileInfo } from '@/app/profile/components/ProfileInfo';
-import { ProfileSections } from './components/ProfileSections';
 
 // Define our local Profile type that accepts null values
 interface UserProfile {
@@ -125,7 +124,6 @@ export default function MerchantProfilePage() {
                 address={currentAccount.address} 
               />
             </div>
-            <ProfileSections username={profile?.username} />
           </div>
           
           <div className="w-full mt-auto mb-8 flex justify-center">

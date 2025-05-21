@@ -35,8 +35,8 @@ export function AlertSuiBalance() {
     <Alert className="bg-gray-800 border-gray-700 text-gray-400 mb-10">
       <Info />
       <AlertDescription className="text-gray-400">
-        <p>SUI will be used for gas fees.</p>
-        <p>SUI Balance: {formattedSuiBalance} SUI</p>
+        <p>Only USDC can be withdrawn. SUI is exclusively used for gas fees.</p>
+        <p>Current SUI Balance: {formattedSuiBalance} SUI</p>
       </AlertDescription>
     </Alert>
   );

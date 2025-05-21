@@ -276,6 +276,7 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
           className="pl-9 bg-[#1F1F23] border-[#3B3C3F] text-white"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          autoComplete="off"
         />
       </div>
       
