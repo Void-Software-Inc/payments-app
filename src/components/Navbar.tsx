@@ -178,8 +178,8 @@ export function Navbar() {
     }
   };
 
-  // Don't render navbar on the login page
-  if (isLoginPage) {
+  // Don't render navbar on login page or home page when not connected
+  if (isLoginPage || (isHomePage && !currentAccount?.address)) {
     return null;
   }
 
@@ -269,7 +269,7 @@ export function Navbar() {
             </>
           )}
 
-          {!currentAccount?.address && (
+          {!currentAccount?.address && !isHomePage && (
             <ConnectModal
               trigger={
                 <Button variant="outline" className="rounded-full flex items-center gap-2">
