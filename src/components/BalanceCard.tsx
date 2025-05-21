@@ -145,10 +145,6 @@ export function BalanceCard({
           {/* Balance Header */}
           <div className="flex justify-between items-center">
             <h2 className="text-gray-400 text-lg font-medium">{title}</h2>
-            <div className="flex items-center text-cyan-400">
-              <ArrowUpRight className="h-4 w-4 mr-1" />
-              <span className="text-sm">{percentChange}%(1d)</span>
-            </div>
           </div>
 
           {/* Balance Amount */}

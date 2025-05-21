@@ -1,7 +1,7 @@
 "use client"
 import { ConnectModal, useCurrentAccount } from '@mysten/dapp-kit';
 import { Button } from "@/components/ui/button";
-import { Wallet, ChevronLeft, Store, User, QrCode, Home } from 'lucide-react';
+import { Wallet, ChevronLeft, User, QrCode, Home } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
@@ -213,23 +213,11 @@ export function Navbar() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-full"
-                    asChild
-                  >
-                    <Link href="/merchant">
-                      <Store className="h-5 w-5" />
-                      <span className="sr-only">Merchant</span>
-                    </Link>
-                  </Button>
-                
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
+                    className="rounded-full bg-white/30 border-none"
                     asChild
                   >
                     <Link href="/profile">
-                      <User className="h-5 w-5" />
+                      <User className="h-5 w-5 text-white" />
                       <span className="sr-only">Profile</span>
                     </Link>
                   </Button>
