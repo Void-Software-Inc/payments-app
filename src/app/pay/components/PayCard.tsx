@@ -34,9 +34,12 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   const [balanceInUsdc, setBalanceInUsdc] = useState<bigint>(BigInt(0));
   const [usdcDecimals, setUsdcDecimals] = useState<number>(6); // Default USDC decimals is usually 6
   const [showScanner, setShowScanner] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<string | null>(null);
+  const [paymentDescription, setPaymentDescription] = useState<string | null>(null);
   
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
+  const { getIntent } = usePaymentClient();
   
   // Fetch balances when the component loads
   useEffect(() => {
@@ -79,6 +82,9 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
     setPaymentId(e.target.value);
     // Clear error when user types
     if (error) setError(null);
+    // Clear payment amount when ID changes
+    setPaymentAmount(null);
+    setPaymentDescription(null);
   };
   
   const handleTipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,6 +168,44 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   const formattedSuiBalance = formatSuiBalance(balanceInSui);
   const formattedUsdcBalance = formatUsdcBalance(balanceInUsdc, usdcDecimals);
   
+  // Fetch payment details when payment ID changes
+  useEffect(() => {
+    const fetchPaymentDetails = async () => {
+      if (!currentAccount?.address || !paymentId.trim()) {
+        return;
+      }
+
+      try {
+        // Extract payment ID from link if it's a link format
+        let actualPaymentId = paymentId.trim();
+        if (actualPaymentId.includes('/')) {
+          const parts = actualPaymentId.split('/');
+          actualPaymentId = parts[parts.length - 1];
+        }
+
+        const intentDetails = await getIntent(currentAccount.address, actualPaymentId);
+        if (intentDetails) {
+          // Get amount from intent
+          const intentFields = intentDetails.fields as any;
+          const argsAmount = (intentDetails as any)?.args?.amount?.toString();
+          const fieldsAmount = intentFields?.amount?.toString();
+          const amount = argsAmount || fieldsAmount || '0';
+          
+          // Format amount (assuming 6 decimals for USDC)
+          const amountNumber = Number(amount) / 1_000_000;
+          setPaymentAmount(amountNumber.toFixed(2));
+          
+          // Get description
+          setPaymentDescription(intentDetails.fields?.description || null);
+        }
+      } catch (error) {
+        console.error("Error fetching payment details:", error);
+      }
+    };
+
+    fetchPaymentDetails();
+  }, [currentAccount?.address, paymentId, getIntent]);
+  
   return (
     <div className="pb-24">
       <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
@@ -183,6 +227,21 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
               />
             </div>
           </div>
+          
+          {/* Payment Amount Display */}
+          {paymentAmount && (
+            <div className="space-y-2 mt-2">
+              <Label className="text-md text-[#c8c8c8] font-medium">
+                Amount to Pay
+              </Label>
+              <div className="flex items-center justify-between p-4 bg-[#1F1F23] rounded-lg">
+                <span className="text-xl font-semibold text-white">${paymentAmount} USDC</span>
+              </div>
+              {paymentDescription && (
+                <p className="text-sm text-[#c8c8c8] mt-2">{paymentDescription}</p>
+              )}
+            </div>
+          )}
           
           {/* Tip Amount Input */}
           <div className="space-y-2 mt-2">
