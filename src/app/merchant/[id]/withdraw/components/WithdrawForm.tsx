@@ -262,6 +262,7 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
                 min="0"
                 step="0.000001"
                 className={amountError ? "border-red-500" : ""}
+                autoComplete="off"
               />
               {amountError && (
                 <Alert variant="destructive" className="bg-red-900/50 border-red-500/50 text-red-200">

@@ -368,17 +368,6 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
             : `${payment.date} - ${payment.time}`}
         </p>
         
-        {intentInfo && (
-          <>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-md text-gray-400">Debug Info</p>
-            </div>
-            <pre className="text-xs text-gray-400 mb-6 overflow-x-auto bg-[#1F1F24] p-2 rounded">
-              {intentInfo}
-            </pre>
-          </>
-        )}
-        
         {/* Only show link and QR code for regular payment intents */}
         {!payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') && (
           <>

@@ -255,7 +255,7 @@ export function WithdrawForm() {
                 onChange={handleAmountChange}
                 placeholder="0.00"
                 className="h-14 bg-transparent border-[#5E6164] rounded-lg text-white pr-24 text-lg"
-                autoComplete="false"
+                autoComplete="off"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     <div className="h-8 bg-transparent text-white flex items-center gap-2">
@@ -304,7 +304,7 @@ export function WithdrawForm() {
                 onChange={handleRecipientChange}
                 placeholder="0x..."
                 className="h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg"
-                autoComplete="false"
+                autoComplete="off"
                 />
                 <Button 
                 variant="outline"
