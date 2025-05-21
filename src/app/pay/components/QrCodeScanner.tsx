@@ -233,15 +233,15 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
 
   const handleQrCodeScan = (decodedText: string) => {
     try {
-      let paymentId = decodedText;
+      let paymentId = decodedText.trim();
       
       // Try to extract payment ID from URL if it's a URL
-      if (decodedText.startsWith('http')) {
+      if (paymentId.startsWith('http')) {
         try {
-          const url = new URL(decodedText);
+          const url = new URL(paymentId);
           const pathSegments = url.pathname.split('/').filter(Boolean);
           if (pathSegments.length) {
-            paymentId = pathSegments[pathSegments.length - 1];
+            paymentId = pathSegments[pathSegments.length - 1].trim();
           }
         } catch (e) {
           // If not a valid URL, use the raw text

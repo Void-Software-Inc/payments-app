@@ -132,7 +132,13 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
     // Check if it's a link format and extract the ID
     if (actualPaymentId.includes('/')) {
       const parts = actualPaymentId.split('/');
-      actualPaymentId = parts[parts.length - 1];
+      actualPaymentId = parts[parts.length - 1].trim();
+    }
+    
+    // Ensure we're not trying to pay with an empty ID
+    if (!actualPaymentId) {
+      setError("Invalid payment ID");
+      return;
     }
     
     // Check if user has enough SUI for gas
@@ -160,7 +166,8 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   };
   
   const handleScanSuccess = (scannedPaymentId: string) => {
-    setPaymentId(scannedPaymentId);
+    // Ensure payment ID is properly trimmed when coming from QR scanner
+    setPaymentId(scannedPaymentId.trim());
     if (error) setError(null);
   };
   
@@ -180,7 +187,13 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
         let actualPaymentId = paymentId.trim();
         if (actualPaymentId.includes('/')) {
           const parts = actualPaymentId.split('/');
-          actualPaymentId = parts[parts.length - 1];
+          actualPaymentId = parts[parts.length - 1].trim();
+        }
+
+        // Ensure we're not trying to look up an empty string
+        if (!actualPaymentId) {
+          console.warn("Empty payment ID after processing");
+          return;
         }
 
         const intentDetails = await getIntent(currentAccount.address, actualPaymentId);
@@ -196,15 +209,18 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
           setPaymentAmount(amountNumber.toFixed(2));
           
           // Get description
-          setPaymentDescription(intentDetails.fields?.description || null);
+          setPaymentDescription(intentFields?.description || null);
         }
       } catch (error) {
         console.error("Error fetching payment details:", error);
+        // Reset payment amount and description when intent not found
+        setPaymentAmount(null);
+        setPaymentDescription(null);
       }
     };
 
     fetchPaymentDetails();
-  }, [currentAccount?.address, paymentId, getIntent]);
+  }, [currentAccount?.address, paymentId]);
   
   return (
     <div className="pb-24">
