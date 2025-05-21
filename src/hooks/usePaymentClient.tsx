@@ -135,6 +135,31 @@ export function usePaymentClient() {
     }
   };
 
+  //==================HELPERS==================//
+  
+  const isOwnerAddress = async (userAddr: string, accountId: string): Promise<boolean> => {
+    try {
+      const client = await initClient(userAddr, accountId);
+      
+      // Get the payment account which contains the members array
+      const account = client.paymentAccount;
+      
+      // Check if we have members and at least one member
+      if (!account?.members || account.members.length === 0) {
+        return false;
+      }
+      
+      // Get the first member (owner)
+      const owner = account.members[0];
+      
+      // Compare the owner's address with the provided address
+      return owner.address === userAddr;
+    } catch (error) {
+      console.error("Error checking owner address:", error);
+      return false;
+    }
+  };
+
   //==================GETTERS==================//
 
   const getUser = async (userAddr: string) => {
@@ -666,6 +691,7 @@ export function usePaymentClient() {
     setRecoveryAddress,
     initiateWithdraw,
     completeWithdraw,
-    getWithdrawIntentAmounts
+    getWithdrawIntentAmounts,
+    isOwnerAddress
   };
 }
