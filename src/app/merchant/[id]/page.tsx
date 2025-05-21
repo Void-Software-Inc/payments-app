@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Payment } from "@account.tech/payment";
-import { usePaymentClient } from "@/hooks/usePaymentClient"
+import { usePaymentClient, DepStatus } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { useSuiClient } from "@mysten/dapp-kit"
 import { BalanceCard } from "@/components/BalanceCard"
@@ -12,7 +12,7 @@ import { truncateMiddle } from "@/utils/formatters"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
 import { PendingPayments } from "./components/PendingPayments"
 import { usePaymentStore } from "@/store/usePaymentStore";
-import { Store } from "lucide-react"
+import { Store, AlertCircle } from "lucide-react"
 
 // Define constants for coin types
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -21,7 +21,7 @@ const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf25262103
 export default function PaymentAccountPage() {
   const params = useParams()
   const router = useRouter()
-  const { getPaymentAccount } = usePaymentClient()
+  const { getPaymentAccount, getDepsStatus } = usePaymentClient()
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
@@ -30,6 +30,8 @@ export default function PaymentAccountPage() {
   const [error, setError] = useState<string | null>(null)
   const [balanceInSui, setBalanceInSui] = useState<bigint>(BigInt(0))
   const [balanceInUsdc, setBalanceInUsdc] = useState<bigint>(BigInt(0))
+  const [deps, setDeps] = useState<DepStatus[]>([])
+  const [depsLoading, setDepsLoading] = useState(true)
   
   const accountId = params.id as string
   
@@ -56,6 +58,27 @@ export default function PaymentAccountPage() {
 
     initPaymentClient();
   }, [currentAccount, accountId, refreshCounter]);
+
+  useEffect(() => {
+    const fetchDeps = async () => {
+      if (!currentAccount?.address) return;
+      
+      try {
+        setDepsLoading(true);
+        const depsData = await getDepsStatus(
+          currentAccount.address, 
+          accountId
+        );
+        setDeps(depsData);
+      } catch (error) {
+        console.error('Error fetching dependencies:', error);
+      } finally {
+        setDepsLoading(false);
+      }
+    };
+
+    fetchDeps();
+  }, [currentAccount?.address, accountId]);
 
   // Fetch coins owned by the payment account
   const fetchAccountCoins = async (accountId: string) => {
@@ -86,6 +109,8 @@ export default function PaymentAccountPage() {
 
   // Get account name from metadata
   const accountName = paymentAcc?.metadata?.find(item => item.key === "name")?.value || "Unnamed Account";
+  
+  const needsUpdate = deps.some(dep => dep.latestVersion > dep.currentVersion);
   
   if (isLoading) {
     return (
@@ -125,7 +150,15 @@ export default function PaymentAccountPage() {
                 <h1 className="text-2xl font-bold text-white">{accountName}</h1>
               </div>
             </div>
-            
+
+            {/* Banner Update for dependencies */}
+            {needsUpdate && !depsLoading && (
+              <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-500" />
+                <p className="text-amber-500 text-sm font-medium">Security updates available for your dependencies</p>
+              </div>
+            )}
+
             {/* Balance Card with actual coin data */}
             <div className="mb-10">
               <BalanceCard 
