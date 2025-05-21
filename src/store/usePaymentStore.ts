@@ -96,8 +96,9 @@ export const usePaymentStore = create<PaymentState & PaymentActions>((set, get) 
     const state = get();
     if (state.client) {
       try {
-        await state.client.refresh();
-        set(state => ({ refreshCounter: state.refreshCounter + 1 }));
+        console.log("refreshing client");
+        //await state.client.refresh(); not working for now so we just gonna reset the state 
+        set({ ...initialState, refreshCounter: state.refreshCounter + 1 });
       } catch (error) {
         console.error("Error refreshing client:", error);
         throw error;

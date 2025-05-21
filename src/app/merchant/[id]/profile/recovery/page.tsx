@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { usePaymentClient } from '@/hooks/usePaymentClient';
 import { toast } from 'sonner';
+import { usePaymentStore } from '@/store/usePaymentStore';
 
 export default function RecoveryPage() {
   const params = useParams();
@@ -14,6 +15,7 @@ export default function RecoveryPage() {
   const currentAccount = useCurrentAccount();
   const userAddress = currentAccount?.address;
   const { getPaymentAccount } = usePaymentClient();
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const [recoveryAddresses, setRecoveryAddresses] = useState<Array<{ address: string, username?: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -44,7 +46,7 @@ export default function RecoveryPage() {
     };
 
     fetchRecoveryAddresses();
-  }, [userAddress, id]);
+  }, [userAddress, id, refreshCounter]);
 
   return (
     <div className="h-dvh w-dvw flex justify-center items-center">

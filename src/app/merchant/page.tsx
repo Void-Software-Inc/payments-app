@@ -3,7 +3,6 @@
 import { useEffect } from "react"
 import { MerchantHeader } from "@/app/merchant/components/MerchantHeader"
 import { PaymentAccountsList } from "@/app/merchant/components/PaymentAccountsList"
-import { Toaster } from "sonner"
 
 export default function MerchantPage() {
  
@@ -23,7 +22,6 @@ export default function MerchantPage() {
   
   return (
     <main className="w-dvw h-dvh container mx-auto px-4 mt-20 pb-8 max-w-2xl">
-      <Toaster position="bottom-center" richColors closeButton />
       <MerchantHeader />
       <PaymentAccountsList />
     </main>
