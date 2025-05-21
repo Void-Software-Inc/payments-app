@@ -1,9 +1,8 @@
 'use client';
 import { PaymentClient, Payment } from "@account.tech/payment";
-import { Transaction, TransactionResult } from "@mysten/sui/transactions";
+import { Transaction } from "@mysten/sui/transactions";
 import { usePaymentStore } from "@/store/usePaymentStore";
 import { Intent } from "@account.tech/core";
-import { NETWORK_TYPE } from "@/constants/network";
 
 // Define interface for Intent with additional properties used in our app
 interface ExtendedIntent extends Intent {
