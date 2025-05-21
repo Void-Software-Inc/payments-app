@@ -10,9 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { usePaymentClient } from "@/hooks/usePaymentClient";
 import { signAndExecute, handleTxResult } from "@/utils/Tx";
-import { toast, Toaster } from "sonner";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import { usePaymentStore } from "@/store/usePaymentStore";
 import { Input } from "@/components/ui/input";
 
