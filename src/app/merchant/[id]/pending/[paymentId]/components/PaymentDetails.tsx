@@ -12,6 +12,8 @@ import { Transaction } from "@mysten/sui/transactions"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { signAndExecute, handleTxResult } from "@/utils/Tx"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import Link from "next/link"
 
 interface PaymentDetailsProps {
   merchantId: string
@@ -21,7 +23,7 @@ interface PaymentDetailsProps {
 export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
-  const { deletePayment, getIntentStatus, getFilteredIntents, getDisplayIntents } = usePaymentClient()
+  const { deletePayment, getIntentStatus, getFilteredIntents, getDisplayIntents, isOwnerAddress, getPaymentAccount, completeWithdraw } = usePaymentClient()
   const { refreshClient } = usePaymentStore()
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const signTransaction = useSignTransaction()
@@ -33,6 +35,9 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [intentInfo, setIntentInfo] = useState<string>("")
+  const [isOwner, setIsOwner] = useState<boolean>(false)
+  const [hasMultipleMembers, setHasMultipleMembers] = useState<boolean>(false)
+  const [isValidating, setIsValidating] = useState(false)
 
   useEffect(() => {
     // Only proceed if we have the wallet address
@@ -89,6 +94,17 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           // Only update state if component is still mounted
           if (isMounted) {
             setPayment(paymentDetail)
+            
+            // If it's a withdraw intent, check owner status and members
+            if (isWithdrawIntent) {
+              const ownerStatus = await isOwnerAddress(currentAccount.address, merchantId);
+              const account = await getPaymentAccount(currentAccount.address, merchantId);
+              
+              if (isMounted) {
+                setIsOwner(ownerStatus);
+                setHasMultipleMembers(account.members.length > 1);
+              }
+            }
             
             // Check payment status
             const status = await getIntentStatus(currentAccount.address, paymentDetail.intentKey);
@@ -208,6 +224,45 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
     }
   };
 
+  const handleValidateWithdrawal = async () => {
+    if (!currentAccount?.address || !payment) return;
+    
+    try {
+      setIsValidating(true);
+      
+      // Create a new transaction
+      const tx = new Transaction();
+      
+      // Call the completeWithdraw function
+      await completeWithdraw(
+        currentAccount.address,
+        merchantId,
+        tx,
+        payment.intentKey
+      );
+      
+      // Execute transaction
+      const txResult = await signAndExecute({
+        suiClient,
+        currentAccount,
+        tx,
+        signTransaction,
+        toast
+      });
+      
+      if (txResult) {
+        handleTxResult(txResult, toast);
+        refreshClient();
+        router.push(`/merchant/${merchantId}/pending`);
+      }
+    } catch (error: any) {
+      console.error("Error validating withdrawal:", error);
+      toast.error(error.message || "Failed to validate withdrawal");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   // Format amount for display
   const formatAmount = (amount: string, coinType: string): string => {
     try {
@@ -256,12 +311,38 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   return (
     <Card className="bg-[#2A2A2F] border-2 border-[#39393B]">
       <CardContent className="pb-6 pt-4">
+        {/* Show withdrawal-specific alerts */}
+        {payment?.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') && (
+          <div className="mb-6">
+            {isOwner ? (
+              <Alert variant="default" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+                <AlertDescription>
+                  As the owner of the payment account, you'll need to validate the withdrawal with a secondary address that has access to the payment account.
+                  {!hasMultipleMembers && (
+                    <div className="mt-2">
+                      Don't have any secondary addresses?{' '}
+                      <Link href={`/merchant/${merchantId}/profile/recovery`} className="underline">
+                        Go set one
+                      </Link>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert variant="default" className="bg-green-500/10 text-green-500 border-green-500/20">
+                <AlertDescription>
+                  You can validate the withdrawal as the secondary address
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
         
         <div className="flex items-center justify-between mb-1">
           <p className="text-md text-gray-400">Message</p>
         </div>
         <p className="text-white text-md mb-6">
-          {payment.rawIntent?.fields?.description || payment.description || 'Payment'}
+          {payment?.rawIntent?.fields?.description || payment?.description || 'Payment'}
         </p>
         
         <div className="flex items-center justify-between mb-1">
@@ -333,9 +414,22 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           </>
         )}
 
+        {/* Add validation button for withdrawals if not owner */}
+        {payment?.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') && !isOwner && (
+          <div className="mt-6">
+            <Button
+              onClick={handleValidateWithdrawal}
+              disabled={isValidating}
+              className="w-full bg-green-500 hover:bg-green-600 text-white"
+            >
+              {isValidating ? "Validating..." : "Validate Withdrawal"}
+            </Button>
+          </div>
+        )}
+
         {/* Show delete button for expired payments that are deletable */}
         {intentStatus?.deletable && (payment.status === 'expired') && (
-          <div className="">
+          <div className="mt-4">
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
