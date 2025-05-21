@@ -54,6 +54,37 @@ export type IntentStatus = {
   deletable: boolean;
 };
 
+// Define interfaces for the coin structure
+interface CoinInstance {
+  ref?: {
+    objectId: string;
+  };
+  amount?: string | number;
+}
+
+interface CoinType {
+  type: string;
+  instances?: CoinInstance[];
+}
+
+interface ExtendedPayment extends Payment {
+  lockedObjects: string[];
+}
+
+interface OwnedObjects {
+  coins: {
+    [key: string]: {
+      type: string;
+      instances?: {
+        ref?: {
+          objectId: string;
+        };
+        amount?: string | number;
+      }[];
+    };
+  };
+}
+
 export function usePaymentClient() {
   const { getOrInitClient, resetClient } = usePaymentStore();
 
@@ -546,6 +577,53 @@ export function usePaymentClient() {
     }
   };
 
+  const getWithdrawIntentAmounts = async (userAddr: string, accountId: string): Promise<Record<string, string>> => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      const account = client.paymentAccount as ExtendedPayment;
+      const ownedObjects = client.ownedObjects as unknown as OwnedObjects;
+      
+      if (!ownedObjects?.coins) {
+        return {};
+      }
+
+      // Find USDC coin type
+      const usdcCoinEntry = Object.entries(ownedObjects.coins).find(
+        ([_, coin]) => coin.type.includes("usdc::USDC")
+      );
+
+      if (!usdcCoinEntry) {
+        return {};
+      }
+
+      const [usdcCoinId, usdcCoin] = usdcCoinEntry;
+      const amounts: Record<string, string> = {};
+
+      // Get instances from USDC coin
+      if (usdcCoin.instances && Array.isArray(usdcCoin.instances)) {
+        // For each instance in USDC coin
+        for (const instance of usdcCoin.instances) {
+          if (!instance?.ref?.objectId) continue;
+
+          const objectId = instance.ref.objectId;
+          
+          // Check if this object is in lockedObjects
+          if (account.lockedObjects && account.lockedObjects.includes(objectId)) {
+            // Get the amount from the instance
+            if (instance.amount) {
+              amounts[objectId] = instance.amount.toString();
+            }
+          }
+        }
+      }
+
+      return amounts;
+    } catch (error) {
+      console.error("Error getting withdraw intent amounts:", error);
+      return {};
+    }
+  };
+
   return {
     initPaymentClient,
     refresh,
@@ -568,6 +646,7 @@ export function usePaymentClient() {
     updateVerifiedDeps,
     setRecoveryAddress,
     initiateWithdraw,
-    completeWithdraw
+    completeWithdraw,
+    getWithdrawIntentAmounts
   };
 }
