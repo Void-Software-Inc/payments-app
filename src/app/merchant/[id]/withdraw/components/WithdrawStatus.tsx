@@ -25,11 +25,11 @@ export function WithdrawStatus({ isOwner, account }: WithdrawStatusProps) {
 
   if (isOwner) {
     return (
-      <Card className="bg-blue-900/50 border border-blue-500/50 shadow-lg w-full mb-4">
-        <CardContent className="pt-6 flex items-start">
+      <Card className="bg-blue-900/50 border border-blue-500/50 w-full mb-4 p-3">
+        <CardContent className="flex items-start px-1">
           <AlertCircle className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-1" />
           <div>
-            <p className="text-blue-200">
+            <p className="text-blue-200 text-sm">
               As the owner, you can initiate a withdrawal from this account.
               After initiation, you will need to confirm the transaction with one of your backup accounts.
             </p>

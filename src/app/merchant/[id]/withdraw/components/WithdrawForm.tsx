@@ -232,27 +232,27 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
   if (isOwner) {
     return (
       <Card className="bg-[#2A2A2F] border-none shadow-lg w-full my-4">
-        <CardContent className="pt-6">
+        <CardContent className="py-1">
           <h2 className="text-xl font-semibold text-white mb-4">Initiate Withdrawal</h2>
           
           <div className="space-y-2 mb-6">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Total balance:</span>
+              <span className="text-sm text-zinc-400">Total balance:</span>
               <span className="text-sm font-medium text-white">{formatUSDC(balanceInfo.total)} USDC</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Locked in withdrawals:</span>
+              <span className="text-sm text-zinc-400">Locked in withdrawals:</span>
               <span className="text-sm font-medium text-orange-400">{formatUSDC(balanceInfo.locked)} USDC</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Available balance:</span>
+              <span className="text-sm text-zinc-400">Available balance:</span>
               <span className="text-sm font-medium text-green-400">{formatUSDC(balanceInfo.available)} USDC</span>
             </div>
           </div>
           
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (USDC)</Label>
+              <Label htmlFor="amount"><p className="text-zinc-400 text-md">Amount (USDC)</p></Label>
               <Input
                 id="amount"
                 placeholder="0.00"
@@ -261,7 +261,7 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
                 type="number"
                 min="0"
                 step="0.000001"
-                className={amountError ? "border-red-500" : ""}
+                className={`bg-transparent border-zinc-700 text-white text-md ${amountError ? "border-red-500" : ""}`}
                 autoComplete="off"
               />
               {amountError && (
@@ -274,20 +274,21 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
               )}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="recipient">Recipient Address</Label>
+            <div className="space-y-2 pb-3">
+              <Label htmlFor="recipient"><p className="text-zinc-400 text-md">Recipient Address</p></Label>
               <Input
                 id="recipient"
                 placeholder="0x..."
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
+                className="bg-transparent border-zinc-700 text-white text-md"
               />
             </div>
             
             <Button 
               onClick={handleInitiateWithdraw}
               disabled={!amount || !recipient || isSubmitting || !!amountError}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600"
+              className="w-full h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
             >
               {isSubmitting ? "Processing..." : "Initiate Withdraw"}
             </Button>

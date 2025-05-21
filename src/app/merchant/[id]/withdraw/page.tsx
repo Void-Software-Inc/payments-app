@@ -47,11 +47,11 @@ export default function WithdrawPage() {
   }
 
   return (
-    <div className="w-full h-dvh overflow-y-auto">
-      <div className="w-full pt-20 pb-24 flex flex-col items-center">
+    <div className="w-full h-dvh overflow-y-auto pb-10">
+      <div className="w-full pt-5 pb-24 flex flex-col items-center">
         <div className="w-[90%] h-full">
           <div className="container mx-auto py-0 max-w-2xl">
-            <h1 className="text-2xl font-bold text-white mb-6">Withdraw Funds</h1>
+            <h1 className="text-2xl font-bold text-white mb-6 text-center">Withdraw Funds</h1>
             
             <WithdrawStatus 
               isOwner={isOwner}
