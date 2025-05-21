@@ -21,7 +21,8 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount();
   const { getPendingPayments, getIntentStatus } = usePaymentClient();
-  const { refreshTrigger } = usePaymentStore();
+  const { refreshClient } = usePaymentStore();
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([])
   const [filteredPayments, setFilteredPayments] = useState<PendingPayment[]>([])
@@ -104,7 +105,7 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
     }
 
     fetchPendingPayments()
-  }, [currentAccount?.address, merchantId, refreshTrigger])
+  }, [currentAccount?.address, merchantId, refreshCounter])
   
   // Filter payments when search term or status filter changes
   useEffect(() => {

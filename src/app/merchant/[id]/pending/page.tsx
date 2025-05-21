@@ -2,7 +2,6 @@
 
 import { useParams } from "next/navigation"
 import { AllPendingPayments } from "./components/AllPendingPayments"
-import { PageTitle } from "./components/PageTitle"
 
 export default function PendingPaymentsPage() {
   const params = useParams()

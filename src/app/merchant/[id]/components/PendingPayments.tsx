@@ -7,7 +7,6 @@ import { CirclePlus } from "lucide-react"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { usePaymentClient, PendingPayment as ClientPendingPayment } from "@/hooks/usePaymentClient"
 import { usePaymentStore } from "@/store/usePaymentStore"
-import { formatSuiBalance } from "@/utils/formatters"
 
 interface PendingPaymentsProps {
   merchantId: string
@@ -18,7 +17,7 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
   const { getPendingPayments } = usePaymentClient()
-  const { refreshTrigger } = usePaymentStore()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const [pendingPayments, setPendingPayments] = useState<ClientPendingPayment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -73,7 +72,7 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
     }
 
     fetchPendingPayments()
-  }, [currentAccount?.address, merchantId, limit, refreshTrigger])
+  }, [currentAccount?.address, merchantId, limit, refreshCounter])
 
   const handlePaymentClick = (paymentId: string) => {
     router.push(`/merchant/${merchantId}/pending/${paymentId}`)
