@@ -1,5 +1,5 @@
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import { HandCoins, ArrowUpDown } from 'lucide-react';
+import { Send, ArrowUpDown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export function ActionButtonsCustomer() {
@@ -40,7 +40,7 @@ export function ActionButtonsCustomer() {
         onClick={handlePay}
         disabled={isPayPage}
       >
-        <HandCoins className="size-7 text-white" />
+        <Send className="size-6 text-white" />
       </Button>
       <Button
         variant="outline"
