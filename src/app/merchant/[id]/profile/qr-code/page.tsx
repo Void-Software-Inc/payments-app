@@ -21,9 +21,9 @@ export default function MerchantProfileQRCodePage() {
   // Redirect to login if wallet is not connected
   useEffect(() => {
     if (!currentAccount?.address) {
-      router.push("/login");
+      router.push("/");
     }
-  }, [currentAccount?.address, router]);
+  }, [currentAccount?.address]);
   
   // Verify that the payment account exists and user has access
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function MerchantProfileQRCodePage() {
     };
     
     verifyPaymentAccount();
-  }, [currentAccount?.address, accountId, router]);
+  }, [currentAccount?.address, accountId]);
   
   const copyToClipboard = () => {
     if (accountId) {

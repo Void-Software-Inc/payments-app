@@ -11,6 +11,7 @@ import { BalanceCard } from "@/components/BalanceCard"
 import { truncateMiddle } from "@/utils/formatters"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
 import { PendingPayments } from "./components/PendingPayments"
+import { usePaymentStore } from "@/store/usePaymentStore";
 
 // Define constants for coin types
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -20,6 +21,7 @@ export default function PaymentAccountPage() {
   const params = useParams()
   const router = useRouter()
   const { getPaymentAccount } = usePaymentClient()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
   const [paymentAcc, setPaymentAcc] = useState<Payment | null>(null);
@@ -52,7 +54,7 @@ export default function PaymentAccountPage() {
     };
 
     initPaymentClient();
-  }, [currentAccount, accountId]);
+  }, [currentAccount, accountId, refreshCounter]);
 
   // Fetch coins owned by the payment account
   const fetchAccountCoins = async (accountId: string) => {

@@ -7,7 +7,7 @@ import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dap
 import { Transaction } from "@mysten/sui/transactions"
 import { signAndExecute, handleTxResult } from "@/utils/Tx"
 import { toast } from "sonner"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { Button } from "@/components/ui/button"
 import { PageTitle } from "../ask-payment/components/PageTitle"

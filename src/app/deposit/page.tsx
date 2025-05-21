@@ -13,9 +13,9 @@ export default function DepositPage() {
   // Redirect to login if wallet is not connected
   useEffect(() => {
     if (!currentAccount?.address) {
-      router.push('/login');
+      router.push('/');
     }
-  }, [currentAccount?.address, router]);
+  }, [currentAccount?.address]);
   
   // If not connected, show nothing while redirecting
   if (!currentAccount?.address) {
