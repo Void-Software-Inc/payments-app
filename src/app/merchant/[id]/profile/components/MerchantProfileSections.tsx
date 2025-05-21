@@ -39,7 +39,6 @@ export function MerchantProfileSections({ username }: MerchantProfileSectionsPro
   const sections: ProfileSection[] = [
     { title: "Shop Name", link: `/merchant/${merchantId}/profile/name`, value: shopName },
     { title: "Security", link: `/merchant/${merchantId}/profile/security` },
-    { title: "Transactions", link: `/merchant/${merchantId}/transactions` },
     { title: "Recovery", link: `/merchant/${merchantId}/profile/recovery` }
   ];
 

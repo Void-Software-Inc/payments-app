@@ -55,7 +55,8 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
   const [recoveryAddresses, setRecoveryAddresses] = useState<Array<{ address: string, username?: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { setRecoveryAddress, getPaymentAccount } = usePaymentClient();
-  const { resetClient } = usePaymentStore();
+  const { refreshClient } = usePaymentStore();
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const suiClient = useSuiClient();
   const signTransaction = useSignTransaction();
 
@@ -86,7 +87,7 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
     };
 
     fetchRecoveryAddresses();
-  }, [userAddress, accountId]);
+  }, [userAddress, accountId, refreshCounter]);
 
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -139,9 +140,8 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
       });
 
       if (result.effects?.status?.status === 'success') {
-        // Reset client and trigger refresh
-        resetClient();
-        usePaymentStore.getState().triggerRefresh();
+        // Reset client
+        refreshClient();
         
         setRecoveryAddressString('');
         

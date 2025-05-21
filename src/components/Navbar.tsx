@@ -111,6 +111,12 @@ export function Navbar() {
       return;
     }
 
+    // If on merchant withdraw page, go to merchant ID page
+    if (merchantId && pathname.match(/^\/merchant\/[^\/]+\/withdraw(?:\/[^\/]+)?$/)) {
+      router.push(`/merchant/${merchantId}`);
+      return;
+    }
+
     // If on merchant ask-payment page, go to merchant ID page
     if (isAskPaymentPage) {
       console.log("Navigating from ask-payment to:", `/merchant/${merchantId}`);

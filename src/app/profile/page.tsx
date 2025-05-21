@@ -31,21 +31,14 @@ export default function MerchantProfilePage() {
   const currentAccount = useCurrentAccount();
   const router = useRouter();
   const { mutate: disconnect } = useDisconnectWallet();
-  const pathname = usePathname();
   const { getUserProfile, getUser } = usePaymentClient();
-  const { triggerRefresh } = usePaymentStore();
+  const { refreshClient } = usePaymentStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasInitialized = useRef(false);
-  
-  // Trigger refresh when navigating to profile page
-  useEffect(() => {
-    if (currentAccount?.address) {
-      triggerRefresh();
-    }
-  }, [currentAccount?.address, pathname, triggerRefresh]);
+
   
   // Redirect to login if wallet is not connected and fetch profile data
   useEffect(() => {

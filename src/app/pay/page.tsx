@@ -10,7 +10,6 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { Button } from "@/components/ui/button"
-import { AskPaymentActions } from "../merchant/[id]/ask-payment/components/AskPaymentActions"
 import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
 import { PayCard } from "./components/PayCard"
 import { formatSuiBalance, truncateMiddle } from "@/utils/formatters"
@@ -20,33 +19,16 @@ import { ActionButtonsCustomer } from "@/components/ActionButtonsCustomer"
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
 
 export default function PayPage() {
-  const params = useParams()
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { initPaymentClient, makePayment, getIntent } = usePaymentClient()
-  const { resetClient } = usePaymentStore()
+  const { makePayment, getIntent } = usePaymentClient()
+  const { refreshClient } = usePaymentStore()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   const [pageError, setPageError] = useState<string | null>(null)
 
-  // Initialize client 
-  useEffect(() => {
-    if (!currentAccount?.address) return
-    
-    const initClient = async () => {
-      try {
-        // Initialize client with user's address
-        await initPaymentClient(currentAccount.address)
-      } catch (error) {
-        console.error("Error initializing payment client:", error)
-        setPageError("Could not initialize payment client. Please try again.")
-      }
-    }
-    
-    initClient()
-  }, [currentAccount?.address, initPaymentClient])
 
   const handleMakePayment = async (paymentId: string, tip: bigint = BigInt(0)) => {
     if (!currentAccount?.address) {
@@ -161,9 +143,8 @@ export default function PayPage() {
           }
         }
         
-        // Reset client and trigger refresh
-        resetClient();
-        usePaymentStore.getState().triggerRefresh();
+        // Reset client
+        refreshClient();
         
         // Redirect to a success page or home
         setTimeout(() => router.push('/'), 1500)
@@ -192,7 +173,7 @@ export default function PayPage() {
   }
 
   return (
-    <div className="h-dvh w-dvw flex justify-center items-center">
+    <div className="h-dvh w-dvw flex justify-center items-center overflow-y-auto">
       <div className="w-[90%] h-full pt-16 space-y-6">
         {/* Main Content */}
         <div className="flex items-center justify-between">

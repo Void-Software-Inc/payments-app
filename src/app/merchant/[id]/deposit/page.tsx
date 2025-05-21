@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { DepositCard } from "./components/DepositCard";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { usePaymentClient } from "@/hooks/usePaymentClient";
-import { Toaster } from "sonner";
 import { FiatButton } from "@/components/FiatButton";
 
 export default function DepositPage() {
@@ -88,7 +87,6 @@ export default function DepositPage() {
   
   return (
     <div className="container mx-auto px-4 max-w-md">
-      <Toaster position="bottom-center" richColors closeButton />
       <div className="flex justify-center items-center w-full mb-6 pt-5">
         <h1 className="text-2xl font-bold text-white">Deposit</h1>
       </div>
