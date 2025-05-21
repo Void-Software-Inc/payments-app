@@ -9,9 +9,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface PaymentFormProps {
   onGeneratePayment: (amount: string, message: string) => void
   isProcessing?: boolean
+  accountName?: string
 }
 
-export function PaymentForm({ onGeneratePayment, isProcessing = false }: PaymentFormProps) {
+export function PaymentForm({ onGeneratePayment, isProcessing = false, accountName }: PaymentFormProps) {
   const [amount, setAmount] = useState("")
   const [message, setMessage] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -57,14 +58,15 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false }: Payment
 
   return (
     <Card className="w-full h-fit bg-[#2A2A2F] p-0 border-none">
-      <CardHeader className="px-6 pt-6 pb-2">
+      <CardHeader className="px-6 pt-6">
         <CardDescription className="text-zinc-400">
+          {accountName && <span className="text-xl text-white font-semibold block mb-2">{accountName}</span>}
           Generate a payment request that your customers can pay later. The payment request will create a unique payment ID that can be shared.
         </CardDescription>
       </CardHeader>
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-        <CardContent className="p-6 pt-2">
-          <div className="mb-7">
+        <CardContent className="p-6 pt-0 pb-2">
+          <div className="mb-6">
             <div className="flex items-center gap-2 mb-1">
               <label htmlFor="amount" className="text-zinc-400 text-md block">Amount</label>
               <TooltipProvider>

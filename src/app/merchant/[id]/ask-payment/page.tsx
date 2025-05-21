@@ -167,11 +167,11 @@ export default function AskPaymentPage() {
   }
 
   return (
-    <div className="h-dvh w-dvw flex justify-center items-center">
-      <div className="w-[90%] h-full pt-16 space-y-6">
+    <div className="h-dvh w-dvw flex justify-center items-center overflow-y-auto">
+      <div className="w-[90%] h-full pt-16 space-y-6 mb-24">
         {/* Main Content */}
-        <div className="flex items-center justify-between">
-          <PageTitle title={paymentAccount ? `Ask Payment - ${paymentAccount.name}` : "Ask Payment"} />
+        <div className="flex items-center justify-center pt-1">
+          <PageTitle title="Ask Payment" />
         </div>
         {pageError ? (
           <div className="bg-red-500/10 p-4 rounded-lg text-red-600 text-center">
@@ -184,7 +184,11 @@ export default function AskPaymentPage() {
             </Button>
           </div>
         ) : (
-          <PaymentForm onGeneratePayment={handleGeneratePayment} isProcessing={isProcessing} />
+          <PaymentForm 
+            onGeneratePayment={handleGeneratePayment} 
+            isProcessing={isProcessing}
+            accountName={paymentAccount?.name} 
+          />
         )}
       </div>
 
