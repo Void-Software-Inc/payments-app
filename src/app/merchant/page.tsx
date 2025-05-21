@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
-import { MerchantHeader } from "@/app/merchant/components/MerchantHeader"
+import { useEffect, useState } from "react"
 import { PaymentAccountsList } from "@/app/merchant/components/PaymentAccountsList"
 
 export default function MerchantPage() {
+  const [accountCount, setAccountCount] = useState<number>(0);
  
   // Apply a custom CSS class to the body when this page is mounted
   useEffect(() => {
@@ -20,10 +20,20 @@ export default function MerchantPage() {
     };
   }, []);
   
+  const handleAccountsLoaded = (count: number) => {
+    setAccountCount(count);
+  };
+  
   return (
-    <main className="w-dvw h-dvh container mx-auto px-4 mt-20 pb-8 max-w-2xl">
-      <MerchantHeader />
-      <PaymentAccountsList />
-    </main>
+    <div className="w-full min-h-screen bg-[#212229]">
+      <main className="w-dvw h-dvh container mx-auto px-4 pt-6 pb-8 max-w-2xl">
+        <div className="flex justify-center items-center w-full mb-6">
+            <h1 className="text-2xl font-bold text-white text-center">
+              {accountCount === 1 ? "Merchant Account" : "Merchant Accounts"}
+            </h1>
+        </div>
+        <PaymentAccountsList onAccountsLoaded={handleAccountsLoaded} />
+      </main>
+    </div>
   )
 } 

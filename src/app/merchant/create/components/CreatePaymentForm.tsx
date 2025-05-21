@@ -123,25 +123,26 @@ export function CreatePaymentForm() {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="username" className="text-[#B2B2B2]">Username (Optional)</Label>
+            <Label htmlFor="username" className="text-[#B2B2B2]">Username (Coming soon)</Label>
             <Input
               id="username"
-              placeholder="Enter username or leave empty for default"
+              placeholder=""
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white"
               autoComplete="off"
+              disabled
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="profilePicture" className="text-[#B2B2B2]">Profile Picture URL (Optional)</Label>
+            <Label htmlFor="profilePicture" className="text-[#B2B2B2]">Profile Picture URL (Coming soon)</Label>
             <Input
               id="profilePicture"
               placeholder=""
               value={profilePicture}
               onChange={(e) => setProfilePicture(e.target.value)}
-              className="h-12 bg-[#505052]/80 border-[#595C5F] text-white"
+              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white"
               autoComplete="off"
               disabled
             />

@@ -12,6 +12,7 @@ import { truncateMiddle } from "@/utils/formatters"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
 import { PendingPayments } from "./components/PendingPayments"
 import { usePaymentStore } from "@/store/usePaymentStore";
+import { Store } from "lucide-react"
 
 // Define constants for coin types
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -115,13 +116,13 @@ export default function PaymentAccountPage() {
   
   return (
     <div className="w-full h-dvh overflow-y-auto">
-      <div className="w-full pt-20 pb-24 flex flex-col items-center">
+      <div className="w-full pt-6 pb-24 flex flex-col items-center">
         <div className="w-[90%] h-full">
           <div className="container mx-auto py-0 max-w-2xl">
-            <div className="mb-6 flex justify-between items-center">
-              <div>
+            <div className="mb-8 flex justify-center items-center">
+              <div className="flex items-center gap-2">
+                <Store className="h-6 w-6 text-white" />
                 <h1 className="text-2xl font-bold text-white">{accountName}</h1>
-                <p className="text-zinc-200 ml-1 text-sm">ID: {truncateMiddle(accountId)}</p>
               </div>
             </div>
             

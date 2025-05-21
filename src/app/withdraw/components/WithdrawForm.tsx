@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, QrCode, ArrowDown } from "lucide-react";
+import { Wallet, QrCode } from "lucide-react";
 import { 
   useCurrentAccount, 
   useSignTransaction, 
@@ -273,7 +273,6 @@ export function WithdrawForm() {
                 <span>{formattedUsdcBalance} USDC</span>
                 </div>
                 <div className="flex items-center gap-1">
-                <ArrowDown className="h-3 w-3" />
                 <span>{balanceInSui > BigInt(0) ? `${formattedSuiBalance} SUI (gas)` : "Insufficient SUI for gas"}</span>
                 </div>
             </div>
