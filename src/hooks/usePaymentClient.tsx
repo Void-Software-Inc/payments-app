@@ -174,6 +174,19 @@ export function usePaymentClient() {
     }
   };
 
+  const getIntents = async (userAddr: string, accountId: string) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      if (!client.intents) {
+        throw new Error('Intents not available on client');
+      }
+      return client.intents.intents;
+    } catch (error) {
+      console.error("Error getting intents:", error);
+      throw error;
+    }
+  };
+
   //====Pending====//
   const getPendingPayments = async (userAddr: string, accountId?: string): Promise<Record<string, PendingPayment>> => {
     try {
@@ -546,6 +559,7 @@ export function usePaymentClient() {
     getPendingPayments,
     getPaymentDetail,
     getIntent,
+    getIntents,
     issuePayment,
     makePayment,
     deletePayment,
