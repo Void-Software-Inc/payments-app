@@ -307,55 +307,6 @@ export function usePaymentClient() {
     }
   };
 
-  const getWithdrawIntentAmounts = async (userAddr: string, accountId: string): Promise<{ id: string, amount: string }> => {
-    try {
-      const client = await initClient(userAddr, accountId);
-      const account = client.paymentAccount as ExtendedPayment;
-      const ownedObjects = client.ownedObjects as unknown as OwnedObjects;
-      
-      if (!ownedObjects?.coins) {
-        return { id: '', amount: '0' };
-      }
-
-      // Find USDC coin type
-      const usdcCoinEntry = Object.entries(ownedObjects.coins).find(
-        ([_, coin]) => coin.type.includes("usdc::USDC")
-      );
-
-      if (!usdcCoinEntry) {
-        return { id: '', amount: '0' };
-      }
-
-      const [usdcCoinId, usdcCoin] = usdcCoinEntry;
-
-      // Get instances from USDC coin
-      if (usdcCoin.instances && Array.isArray(usdcCoin.instances)) {
-        // For each instance in USDC coin
-        for (const instance of usdcCoin.instances) {
-          if (!instance?.ref?.objectId) continue;
-
-          const objectId = instance.ref.objectId;
-          
-          // Check if this object is in lockedObjects
-          if (account.lockedObjects && account.lockedObjects.includes(objectId)) {
-            // Get the amount from the instance
-            if (instance.amount) {
-              return {
-                id: objectId,
-                amount: instance.amount.toString()
-              };
-            }
-          }
-        }
-      }
-
-      return { id: '', amount: '0' };
-    } catch (error) {
-      console.error("Error getting withdraw intent amounts:", error);
-      return { id: '', amount: '0' };
-    }
-  };
-
   const getDisplayIntents = async (
     userAddr: string,
     accountId: string,
@@ -669,29 +620,33 @@ export function usePaymentClient() {
   };
 
   return {
+    // CORE
     initPaymentClient,
     createPaymentAccount,
+    // HELPERS
+    isOwnerAddress,
+    // GETTERS
     getUser,
     getUserProfile,
     getPaymentAccount,
     getUserPaymentAccounts,
-    modifyName,
+    getIntentStatus,
+    getDepsStatus,
     getIntent,
     getIntents,
     getFilteredIntents,
     getDisplayIntents,
     getLockedObjectsId,
     getCoinInstances,
-    issuePayment,
+    // ACTIONS
+    modifyName,
     makePayment,
     deletePayment,
-    getIntentStatus,
-    getDepsStatus,
     updateVerifiedDeps,
     setRecoveryAddress,
     initiateWithdraw,
+    // INTENTS
+    issuePayment,
     completeWithdraw,
-    getWithdrawIntentAmounts,
-    isOwnerAddress
   };
 }
