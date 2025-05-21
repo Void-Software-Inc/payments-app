@@ -14,7 +14,7 @@ export default function Home() {
     if (!currentAccount?.address) {
       router.push('/login');
     }
-  }, [currentAccount, router]);
+  }, [currentAccount]);
 
   // If not connected, show nothing while redirecting
   if (!currentAccount?.address) {

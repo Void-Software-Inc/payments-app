@@ -112,7 +112,7 @@ export function BalanceCard({
     };
     
     getUsdcDecimals();
-  }, [currentAccount, suiClient, customBalance, customUsdcBalance]);
+  }, [currentAccount, suiClient]);
 
   // Toggle between SUI and USDC display
   const toggleBalanceDisplay = () => {
