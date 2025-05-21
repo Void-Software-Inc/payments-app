@@ -30,6 +30,9 @@ const selectStyles = {
   item: "text-white focus:bg-gray-700 focus:text-white hover:text-white data-[highlighted]:text-white data-[state=checked]:text-white data-[disabled]:text-white"
 };
 
+// Import QrCodeScanner component
+import { QrCodeScanner } from "../../pay/components/QrCodeScanner";
+
 export function WithdrawForm() {
   const [amount, setAmount] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -39,6 +42,7 @@ export function WithdrawForm() {
   const [balanceInUsdc, setBalanceInUsdc] = useState<bigint>(BigInt(0));
   const [usdcDecimals, setUsdcDecimals] = useState<number>(6); // Default USDC decimals is usually 6
   const [usdcCoins, setUsdcCoins] = useState<any[]>([]);
+  const [showScanner, setShowScanner] = useState(false);
   
   const currentAccount = useCurrentAccount();
   const signTransaction = useSignTransaction();
@@ -231,6 +235,15 @@ export function WithdrawForm() {
       setIsSubmitting(false);
     }
   };
+
+  // Handle QR code scan success
+  const handleScanSuccess = (scannedText: string) => {
+    // Clean up the scanned text and set it as the recipient
+    const address = scannedText.trim();
+    setRecipient(address);
+    setShowScanner(false);
+    if (error) setError(null);
+  };
   
   // Format balances for display
   const formattedSuiBalance = formatSuiBalance(balanceInSui);
@@ -295,9 +308,9 @@ export function WithdrawForm() {
                 <Button 
                 variant="outline"
                 className="flex-shrink-0 h-14 w-14 rounded-md bg-transparent border-[#5E6164] flex items-center justify-center hover:bg-[#353550]"
-                onClick={() => {}} // No functionality for now
+                onClick={() => setShowScanner(true)}
                 >
-                <QrCode className="size-7 text-gray-300" />
+                <QrCode className="size-8 text-gray-300" />
                 </Button>
             </div>
             </div>
@@ -319,6 +332,17 @@ export function WithdrawForm() {
 
     <FiatButton />
    
+    {/* QR Code Scanner Modal */}
+    {showScanner && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
+        <div className="bg-[#2A2A2F] rounded-xl overflow-hidden w-full max-w-sm">
+          <QrCodeScanner
+            onScanSuccess={handleScanSuccess}
+            onClose={() => setShowScanner(false)}
+          />
+        </div>
+      </div>
+    )}
   </div>
   );
 } 
