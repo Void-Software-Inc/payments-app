@@ -107,7 +107,7 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
     }
 
     fetchPendingPayments()
-  }, [currentAccount?.address, merchantId, limit, refreshCounter])
+  }, [currentAccount?.address, merchantId, refreshCounter])
 
   const handlePaymentClick = (paymentId: string) => {
     router.push(`/merchant/${merchantId}/pending/${paymentId}`)

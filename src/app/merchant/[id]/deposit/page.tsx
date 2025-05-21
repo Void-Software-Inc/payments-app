@@ -20,9 +20,9 @@ export default function DepositPage() {
   // Redirect to login if wallet is not connected
   useEffect(() => {
     if (!currentAccount?.address) {
-      router.push("/login");
+      router.push("/");
     }
-  }, [currentAccount?.address, router]);
+  }, [currentAccount?.address]);
   
   // Apply a custom CSS class to the body when this page is mounted
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function DepositPage() {
     };
     
     verifyPaymentAccount();
-  }, [currentAccount?.address, accountId, router]);
+  }, [currentAccount?.address, accountId]);
   
   // If not connected, show nothing while redirecting
   if (!currentAccount?.address) {

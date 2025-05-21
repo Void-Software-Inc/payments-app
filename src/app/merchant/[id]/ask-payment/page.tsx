@@ -110,47 +110,12 @@ export default function AskPaymentPage() {
         tx,
         signTransaction,
         toast
-      }).catch(err => {
-        // Handle user rejection of transaction
-        if (err.message?.includes('User rejected')) {
-          toast.error("Transaction canceled by user")
-          return null
-        }
-        throw err
       })
-      
-      if (txResult) {
-        handleTxResult(txResult, toast)
-        
-        // Extract payment details from events if available
-        if (txResult.events && txResult.events.length > 0) {
-          try {
-            const paymentEvent = txResult.events.find((event: any) => 
-              event?.type?.includes('::payment_events::PaymentIssued')
-            );
-            
-            if (paymentEvent?.parsedJson) {
-              const data = paymentEvent.parsedJson;
-              console.log("Payment issued:", {
-                paymentId: data.payment_id, 
-                amount: data.amount,
-                issuedBy: data.issued_by || currentAccount.address // Fallback to current account address
-              });
-              
-              // Store the payment ID for future reference if needed
-              const paymentId = data.payment_id;
-              toast.success(`Payment ID: ${paymentId.slice(0, 8)}...${paymentId.slice(-8)}`);
-            }
-          } catch (error) {
-            console.warn("Error parsing payment events:", error);
-          }
-        }
-        
-        // Reset client
-        refreshClient();
-        // Redirect to pending payments page
-        setTimeout(() => router.push(`/merchant/${paymentAccountId}/pending`), 1500)
-      }
+
+      handleTxResult(txResult, toast)
+      refreshClient();
+      // Redirect to home payment account page
+      router.push(`/merchant/${paymentAccountId}`)
       
     } catch (error: any) {
       console.error("Error generating payment:", error)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardDescription } from "@/components/ui/card"
@@ -16,14 +16,6 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false, accountNa
   const [amount, setAmount] = useState("")
   const [message, setMessage] = useState("")
   const [error, setError] = useState<string | null>(null)
-
-  // Focus the amount input when the component mounts
-  useEffect(() => {
-    const amountInput = document.getElementById('amount');
-    if (amountInput) {
-      amountInput.focus();
-    }
-  }, []);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

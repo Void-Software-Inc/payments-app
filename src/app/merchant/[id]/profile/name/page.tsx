@@ -34,7 +34,7 @@ export default function ChangeShopNamePage() {
   // Fetch current name on page load
   useEffect(() => {
     if (!currentAccount?.address) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 

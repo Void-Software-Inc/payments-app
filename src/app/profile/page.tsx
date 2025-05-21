@@ -43,7 +43,7 @@ export default function MerchantProfilePage() {
   useEffect(() => {
     // If not connected, redirect to login
     if (!currentAccount?.address) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 
@@ -86,7 +86,7 @@ export default function MerchantProfilePage() {
     };
     
     loadProfileData();
-  }, [currentAccount?.address, router]);
+  }, [currentAccount?.address]);
 
   // Handle merchant button click
   const handleMerchantClick = () => {

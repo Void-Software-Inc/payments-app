@@ -13,17 +13,10 @@ export default function ProfileQRCodePage() {
   // Redirect to login if wallet is not connected
   useEffect(() => {
     if (!currentAccount?.address) {
-      router.push('/login');
+      router.push('/');
     }
-  }, [currentAccount?.address, router]);
+  }, [currentAccount?.address]);
   
-  const copyToClipboard = () => {
-    if (currentAccount?.address) {
-      navigator.clipboard.writeText(currentAccount.address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
-    }
-  };
   
   // If not connected, show nothing while redirecting
   if (!currentAccount?.address) {

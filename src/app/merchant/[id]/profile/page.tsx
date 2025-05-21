@@ -39,7 +39,7 @@ export default function MerchantProfilePage() {
   // Redirect to login if wallet is not connected
   useEffect(() => {
     if (!currentAccount?.address) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 
@@ -101,7 +101,7 @@ export default function MerchantProfilePage() {
     return () => {
       isMounted = false;
     };
-  }, [currentAccount?.address, paymentAccountId, router]);
+  }, [currentAccount?.address, paymentAccountId]);
 
   // If not connected, show nothing while redirecting
   if (!currentAccount?.address) {
