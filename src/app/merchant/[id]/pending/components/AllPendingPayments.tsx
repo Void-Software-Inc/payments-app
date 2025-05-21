@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { CirclePlus, Clock, X, CheckCircle, Search } from "lucide-react"
+import { CirclePlus, Clock, X, CheckCircle, Search, ArrowUpDown } from "lucide-react"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { usePaymentClient, PendingPayment, IntentStatus } from "@/hooks/usePaymentClient"
 import { formatDistanceToNow } from "date-fns"
@@ -20,8 +20,7 @@ type StatusFilter = 'all' | 'pending' | 'executed' | 'expired';
 export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount();
-  const { getPendingPayments, getIntentStatus } = usePaymentClient();
-  const { refreshClient } = usePaymentStore();
+  const { getFilteredIntents, getDisplayIntents, getIntentStatus } = usePaymentClient();
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([])
@@ -77,16 +76,51 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
     const fetchPendingPayments = async () => {
       setIsLoading(true)
       try {
-        // Fetch real pending payments from the payment client
-        const paymentsRecord = await getPendingPayments(currentAccount.address, merchantId);
+        // Get all intents of both types
+        const payIntents = await getFilteredIntents(currentAccount.address, merchantId);
         
-        // Convert the record to an array and sort by date (newest first)
-        const paymentsArray = Object.values(paymentsRecord);
+        // Transform intents to display format
+        const payDisplayIntents = await getDisplayIntents(
+          currentAccount.address,
+          merchantId,
+          payIntents,
+          'pay::PayIntent'
+        );
+        
+        const withdrawDisplayIntents = await getDisplayIntents(
+          currentAccount.address,
+          merchantId,
+          payIntents,
+          'owned_intents::WithdrawAndTransferIntent'
+        );
+        
+        // Combine both types of intents
+        const allDisplayIntents = [...payDisplayIntents, ...withdrawDisplayIntents];
+        
+        // Convert to PendingPayment format and sort by date
+        const paymentsArray = allDisplayIntents.map(intent => {
+          // Get the original raw intent from our filtered intents
+          const rawIntent = payIntents[intent.key];
+          
+          return {
+            id: intent.key,
+            intentKey: intent.key,
+            sender: intent.creator,
+            description: intent.description,
+            amount: intent.amount,
+            date: new Date(intent.creationTime).toLocaleDateString(),
+            time: new Date(intent.creationTime).toLocaleTimeString(),
+            status: 'pending', // We'll update this with checkPaymentStatus
+            coinType: intent.coinType,
+            rawIntent // This is now the original Intent type
+          };
+        });
         
         // Check status for each payment
         const updatedPaymentsPromises = paymentsArray.map(checkPaymentStatus);
         const updatedPaymentsArray = await Promise.all(updatedPaymentsPromises);
         
+        // Sort by date (newest first)
         updatedPaymentsArray.sort((a, b) => {
           const dateA = new Date(`${a.date} ${a.time}`);
           const dateB = new Date(`${b.date} ${b.time}`);
@@ -318,6 +352,8 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
                 <div className="w-10 h-14 mr-2 rounded-full flex items-center justify-center">
                   {payment.status === 'expired' ? (
                     <X className="size-7 text-amber-500" />
+                  ) : payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') ? (
+                    <ArrowUpDown className="size-7 text-white" />
                   ) : (
                     <CirclePlus className="size-7 text-white" />
                   )}

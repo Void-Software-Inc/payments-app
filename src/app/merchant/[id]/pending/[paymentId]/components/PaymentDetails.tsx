@@ -21,7 +21,7 @@ interface PaymentDetailsProps {
 export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
-  const { getPaymentDetail, deletePayment, getIntentStatus, getIntent } = usePaymentClient()
+  const { deletePayment, getIntentStatus, getFilteredIntents, getDisplayIntents } = usePaymentClient()
   const { refreshClient } = usePaymentStore()
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const signTransaction = useSignTransaction()
@@ -44,42 +44,74 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
     const fetchPaymentDetails = async () => {
       setIsLoading(true)
       try {
-        // Fetch real payment details
-        const paymentDetail = await getPaymentDetail(
-          currentAccount.address, 
-          merchantId,
-          paymentId
-        )
+        // Get all intents
+        const allIntents = await getFilteredIntents(currentAccount.address, merchantId);
         
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setPayment(paymentDetail)
+        // Get the specific intent we're looking for
+        const intent = allIntents[paymentId];
+        if (!intent) {
+          setPayment(null);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Determine the intent type
+        const isWithdrawIntent = intent.fields?.type_?.includes('owned_intents::WithdrawAndTransferIntent');
+        const intentType = isWithdrawIntent ? 
+          'owned_intents::WithdrawAndTransferIntent' : 
+          'pay::PayIntent';
+        
+        // Get display intents for this specific type
+        const displayIntents = await getDisplayIntents(
+          currentAccount.address,
+          merchantId,
+          { [paymentId]: intent },
+          intentType
+        );
+        
+        // Find our specific display intent
+        const displayIntent = displayIntents[0];
+        
+        if (displayIntent) {
+          const paymentDetail: PendingPayment = {
+            id: displayIntent.key,
+            intentKey: displayIntent.key,
+            sender: displayIntent.creator,
+            description: displayIntent.description,
+            amount: displayIntent.amount,
+            date: new Date(displayIntent.creationTime).toLocaleDateString(),
+            time: new Date(displayIntent.creationTime).toLocaleTimeString(),
+            status: 'pending',
+            coinType: displayIntent.coinType,
+            rawIntent: intent
+          };
           
-          // Check payment status if we have a valid payment
-          if (paymentDetail) {
+          // Only update state if component is still mounted
+          if (isMounted) {
+            setPayment(paymentDetail)
+            
+            // Check payment status
             const status = await getIntentStatus(currentAccount.address, paymentDetail.intentKey);
             if (isMounted) {
               setIntentStatus(status);
               
               // Debug info
-              const intent = await getIntent(currentAccount.address, paymentDetail.intentKey);
-              if (intent) {
-                const debugInfo = {
-                  stage: status.stage,
-                  deletable: status.deletable,
-                  creationTime: intent.fields?.creationTime ? new Date(Number(intent.fields.creationTime)).toLocaleString() : 'N/A',
-                  expirationDuration: intent.fields?.expirationTime ? `${Number(intent.fields.expirationTime) / (1000 * 60 * 60)} hours` : 'N/A',
-                  expiresAt: intent.fields?.creationTime && intent.fields?.expirationTime ? 
-                    new Date(Number(intent.fields.creationTime) + Number(intent.fields.expirationTime)).toLocaleString() : 'N/A',
-                  status: paymentDetail.status
-                };
-                setIntentInfo(JSON.stringify(debugInfo, null, 2));
-              }
+              const debugInfo = {
+                stage: status.stage,
+                deletable: status.deletable,
+                creationTime: intent.fields?.creationTime ? new Date(Number(intent.fields.creationTime)).toLocaleString() : 'N/A',
+                expirationDuration: intent.fields?.expirationTime ? `${Number(intent.fields.expirationTime) / (1000 * 60 * 60)} hours` : 'N/A',
+                expiresAt: intent.fields?.creationTime && intent.fields?.expirationTime ? 
+                  new Date(Number(intent.fields.creationTime) + Number(intent.fields.expirationTime)).toLocaleString() : 'N/A',
+                status: paymentDetail.status,
+                type: intentType
+              };
+              setIntentInfo(JSON.stringify(debugInfo, null, 2));
             }
           }
-          
-          setIsLoading(false)
         }
+        
+        setIsLoading(false)
       } catch (error) {
         // Only update state if component is still mounted
         if (isMounted) {
@@ -266,36 +298,42 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           </>
         )}
         
-        <div className="flex items-center justify-between mb-1">
+        {/* Only show link and QR code for regular payment intents */}
+        {!payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') && (
+          <>
+            <div className="flex items-center justify-between mb-1">
               <p className="text-md text-gray-400">Your Link</p>
-          <button 
-            onClick={copyToClipboard}
-            className="p-1 rounded-full hover:bg-gray-700 text-[#78BCDB] relative flex-shrink-0"
-          >
-            {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-            {copied && (
-              <span className="absolute bg-gray-700 text-white text-xs px-2 py-1 rounded top-[-30px] left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                Copied!
-              </span>
-            )}
-          </button>
-        </div>
-        <p className="text-[#78BCDB] font-mono text-sm break-all mb-6">
-          {payment.rawIntent?.fields?.key || "No key available"}
-        </p>
-        
-        <p className="text-md text-gray-400 mb-4">QR Code</p>
-        <div className="flex justify-center mb-10">
-          <div className="border border-[#737779] rounded-lg p-10 inline-block">
-            <QRCodeSVG 
-              value={`${window.location.origin}/merchant/${merchantId}/pending/${payment.id}`} 
-              size={230}
-              bgColor="#2A2A2F"
-              fgColor="#FFFFFF"
-            />
-          </div>
-        </div>
+              <button 
+                onClick={copyToClipboard}
+                className="p-1 rounded-full hover:bg-gray-700 text-[#78BCDB] relative flex-shrink-0"
+              >
+                {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                {copied && (
+                  <span className="absolute bg-gray-700 text-white text-xs px-2 py-1 rounded top-[-30px] left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+                    Copied!
+                  </span>
+                )}
+              </button>
+            </div>
+            <p className="text-[#78BCDB] font-mono text-sm break-all mb-6">
+              {payment.rawIntent?.fields?.key || "No key available"}
+            </p>
+            
+            <p className="text-md text-gray-400 mb-4">QR Code</p>
+            <div className="flex justify-center mb-10">
+              <div className="border border-[#737779] rounded-lg p-10 inline-block">
+                <QRCodeSVG 
+                  value={`${window.location.origin}/merchant/${merchantId}/pending/${payment.id}`} 
+                  size={230}
+                  bgColor="#2A2A2F"
+                  fgColor="#FFFFFF"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
+        {/* Show delete button for expired payments that are deletable */}
         {intentStatus?.deletable && (payment.status === 'expired') && (
           <div className="">
             <Button

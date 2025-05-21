@@ -6,10 +6,8 @@ import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount, useSignTransaction } from "@mysten/dapp-kit"
 import { useSuiClient } from "@mysten/dapp-kit"
 import { Toaster } from "sonner"
-import { Transaction } from "@mysten/sui/transactions"
 import { WithdrawForm } from "./components/WithdrawForm"
 import { WithdrawStatus } from "./components/WithdrawStatus"
-import { WithdrawIntents } from "./components/WithdrawIntents"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
 import { usePaymentStore } from "@/store/usePaymentStore"
 
@@ -89,8 +87,6 @@ export default function WithdrawPage() {
               isBackup={isBackup}
               pendingWithdraws={pendingWithdraws}
             />
-            
-            <WithdrawIntents merchantId={accountId} />
           </div>
         </div>
       </div>
