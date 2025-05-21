@@ -539,7 +539,15 @@ export function usePaymentClient() {
         }
       }
       
-      client.makePayment(tx, paymentId, tipAmount);
+      // Properly pass tip amount to the client's makePayment method
+      // The Payment Client expects the tip amount as the third parameter
+      if (tipAmount && tipAmount > 0) {
+        console.log(`Processing payment with tip: ${tipAmount.toString()}`);
+        client.makePayment(tx, paymentId, tipAmount);
+      } else {
+        console.log('Processing payment without tip');
+        client.makePayment(tx, paymentId);
+      }
     } catch (error) {
       console.error("Error making payment:", error);
       throw error;

@@ -133,9 +133,15 @@ export default function PayPage() {
             if (paymentEvent?.parsedJson) {
               const data = paymentEvent.parsedJson;
               
-              // Show success message with formatted amount
+              // Show success message with formatted amount and include tip if present
               const formattedAmount = formatSuiBalance(BigInt(data.amount));
-              toast.success(`Paid ${formattedAmount} to ${truncateMiddle(data.issued_by || issuedBy)}`);
+              const tipAmount = data.tip_amount ? formatSuiBalance(BigInt(data.tip_amount)) : null;
+              
+              if (tipAmount) {
+                toast.success(`Paid ${formattedAmount} + ${tipAmount} tip to ${truncateMiddle(data.issued_by || issuedBy)}`);
+              } else {
+                toast.success(`Paid ${formattedAmount} to ${truncateMiddle(data.issued_by || issuedBy)}`);
+              }
             }
           } catch (error) {
             console.warn("Error parsing payment events:", error);
