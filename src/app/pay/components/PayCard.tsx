@@ -105,6 +105,16 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
     setTipAmount(currentTip.toString());
   };
   
+  const calculateTipPercentage = (percentage: number) => {
+    if (!paymentAmount) return;
+    
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    
+    const tipValue = (amount * percentage / 100).toFixed(2);
+    setTipAmount(tipValue);
+  };
+  
   // Format USDC balance
   const formatUsdcBalance = (balance: bigint, decimals: number): string => {
     const divisor = BigInt(10) ** BigInt(decimals);
@@ -264,34 +274,16 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
             <Label htmlFor="tipAmount" className="text-md text-[#c8c8c8] font-medium">
               Add tip (optional)
             </Label>
-            <div className="flex items-center gap-2">
-              <Button 
-                type="button" 
-                size="icon" 
-                variant="outline" 
-                onClick={() => adjustTip(false)}
-                className="h-8 w-8 bg-transparent border-[#5E6164]"
-              >
-                <Minus className="h-4 w-4 text-white" />
-              </Button>
+            <div className="relative">
               <Input
                 id="tipAmount"
                 value={tipAmount}
                 onChange={handleTipChange}
                 placeholder="0.00"
-                className="h-10 bg-transparent border-[#5E6164] rounded-lg text-white text-md text-center"
+                className="h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg pr-20"
                 autoComplete="off"
               />
-              <Button 
-                type="button" 
-                size="icon" 
-                variant="outline" 
-                onClick={() => adjustTip(true)}
-                className="h-8 w-8 bg-transparent border-[#5E6164]"
-              >
-                <Plus className="h-4 w-4 text-white" />
-              </Button>
-              <div className="flex items-center ml-1">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
                 <div className="w-4 h-4 relative">
                   <Image
                     src="/usdc-logo.webp"
@@ -303,6 +295,40 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
                 </div>
                 <span className="text-white text-sm ml-1">USDC</span>
               </div>
+            </div>
+            <div className="flex justify-between gap-2 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => calculateTipPercentage(5)}
+                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+              >
+                5%
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => calculateTipPercentage(10)}
+                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+              >
+                10%
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => calculateTipPercentage(15)}
+                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+              >
+                15%
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => calculateTipPercentage(20)}
+                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+              >
+                20%
+              </Button>
             </div>
           </div>
           

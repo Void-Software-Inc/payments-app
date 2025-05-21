@@ -1,6 +1,6 @@
 "use client"
 
-import { useParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
 import { PayCard } from "./components/PayCard"
 import { formatSuiBalance, truncateMiddle } from "@/utils/formatters"
-import { ActionButtonsCustomer } from "@/components/ActionButtonsCustomer"
 
 // USDC coin type constant
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
@@ -174,10 +173,10 @@ export default function PayPage() {
 
   return (
     <div className="h-dvh w-dvw flex justify-center items-center overflow-y-auto">
-      <div className="w-[90%] h-full pt-16 space-y-6">
+      <div className="w-[90%] h-full space-y-6">
         {/* Main Content */}
-        <div className="flex items-center justify-between">
-          <PageTitle title="Pay" />
+        <div className="flex justify-center items-center w-full mb-6 pt-5">
+          <h1 className="text-2xl font-bold text-white text-center">Pay</h1>
         </div>
         {pageError ? (
           <div className="bg-red-500/10 p-4 rounded-lg text-red-600 text-center">
@@ -193,9 +192,6 @@ export default function PayPage() {
           <PayCard onMakePayment={handleMakePayment} isProcessing={isProcessing} />
         )}
       </div>
-
-      {/* Action Buttons */}
-      <ActionButtonsCustomer />
     </div>
   )
 } 
