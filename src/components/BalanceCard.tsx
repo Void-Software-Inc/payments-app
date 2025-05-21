@@ -1,13 +1,15 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowUpRight, Download, Upload, Wallet2 } from "lucide-react";
+import { ArrowUpRight, Download, Upload, Wallet2, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { formatSuiBalance } from "@/utils/formatters";
 import Link from "next/link";
 import { getCoinDecimals } from "@/utils/helpers";
+import { usePathname } from "next/navigation";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 
 // SUI coin type for SUI token
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -36,6 +38,8 @@ export function BalanceCard({
   const [usdcDecimals, setUsdcDecimals] = useState<number>(6); // Default USDC decimals is usually 6
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
+  const pathname = usePathname();
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
   
   useEffect(() => {
     // If customBalance and customUsdcBalance are provided, use them instead of fetching
@@ -128,6 +132,9 @@ export function BalanceCard({
     ? `${formatSuiBalance(balanceInSui)} SUI`
     : `${formatUsdcBalance(balanceInUsdc, usdcDecimals)} USDC`;
 
+  // Check if SUI balance is zero and user is on root path
+  const showSuiWarning = balanceInSui === BigInt(0) && pathname === "/";
+
   return (
     <Card 
       className="bg-[#2A2A2F] border-none shadow-lg w-full max-w-xl mx-auto cursor-pointer transition-all hover:shadow-xl"
@@ -145,8 +152,27 @@ export function BalanceCard({
           </div>
 
           {/* Balance Amount */}
-          <div className="text-white text-5xl font-semibold">
+          <div className="text-white text-5xl font-semibold flex items-end relative">
             {displayedBalance}
+            {showSuiWarning && !showSui && (
+              <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+                <DialogTrigger asChild>
+                  <button 
+                    className="relative -top-1 ml-2" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowWarningDialog(true);
+                    }}
+                  >
+                    <AlertTriangle className="size-4 text-yellow-400" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px] bg-gray-800 text-white border-gray-700">
+                  <DialogTitle className="text-lg font-medium text-white">Balance Warning</DialogTitle>
+                  <p className="py-4">SUI balance cannot be 0 because it is necessary for gas fees</p>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {/* Action Buttons - preventing click propagation so they work independently */}
