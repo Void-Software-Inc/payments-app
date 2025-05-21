@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { usePaymentClient } from "@/hooks/usePaymentClient"
-import { useCurrentAccount, useSignTransaction } from "@mysten/dapp-kit"
-import { useSuiClient } from "@mysten/dapp-kit"
+import { useCurrentAccount } from "@mysten/dapp-kit"
 import { Toaster } from "sonner"
 import { WithdrawForm } from "./components/WithdrawForm"
 import { WithdrawStatus } from "./components/WithdrawStatus"
@@ -13,15 +12,12 @@ import { usePaymentStore } from "@/store/usePaymentStore"
 
 export default function WithdrawPage() {
   const params = useParams()
-  const { getPaymentAccount } = usePaymentClient()
+  const { getPaymentAccount, isOwnerAddress } = usePaymentClient()
   const currentAccount = useCurrentAccount()
-  const suiClient = useSuiClient()
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const [account, setAccount] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isOwner, setIsOwner] = useState(false)
-  const [isBackup, setIsBackup] = useState(false)
-  const [pendingWithdraws, setPendingWithdraws] = useState<Record<string, any>>({})
   
   const accountId = params.id as string
   
@@ -34,24 +30,9 @@ export default function WithdrawPage() {
         const paymentAcc = await getPaymentAccount(currentAccount.address, accountId)
         setAccount(paymentAcc)
         
-        // Check if current user is owner (index 0) or backup (index 1)
-        if (paymentAcc?.members?.length > 0) {
-          // Convert member addresses to strings for comparison
-          const memberAddresses = paymentAcc.members.map((member: any) => 
-            typeof member === 'string' ? member : member.id || member.address || ''
-          )
-          setIsOwner(memberAddresses[0] === currentAccount.address)
-          setIsBackup(memberAddresses.length > 1 && memberAddresses[1] === currentAccount.address)
-        }
-        
-        // Load pending withdraws from client intents
-        // Use optional chaining and assume any type to avoid type errors
-        const clientIntents = (paymentAcc as any)?.client?.intents?._intents || {}
-        const withdraws = Object.entries(clientIntents)
-          .filter(([key, intent]: [string, any]) => intent.intent === "withdraw")
-          .reduce((acc, [key, intent]) => ({ ...acc, [key]: intent }), {})
-          
-        setPendingWithdraws(withdraws)
+        // Check if current user is owner using helper
+        const ownerStatus = await isOwnerAddress(currentAccount.address, accountId)
+        setIsOwner(ownerStatus)
       } catch (error) {
         console.error("Error loading account:", error)
       } finally {
@@ -76,16 +57,12 @@ export default function WithdrawPage() {
             
             <WithdrawStatus 
               isOwner={isOwner}
-              isBackup={isBackup}
-              pendingWithdraws={pendingWithdraws}
               account={account}
             />
             
             <WithdrawForm 
               accountId={accountId}
               isOwner={isOwner}
-              isBackup={isBackup}
-              pendingWithdraws={pendingWithdraws}
             />
           </div>
         </div>

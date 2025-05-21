@@ -23,11 +23,9 @@ const GAS_BUDGET = 50000000 // 0.05 SUI - Increased to handle complex transactio
 interface WithdrawFormProps {
   accountId: string
   isOwner: boolean
-  isBackup: boolean
-  pendingWithdraws: Record<string, any>
 }
 
-export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }: WithdrawFormProps) {
+export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
   const { initiateWithdraw, completeWithdraw, getPaymentAccount } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
@@ -39,8 +37,6 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
   const { refreshClient } = usePaymentStore()
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const [accountBalance, setAccountBalance] = useState<bigint>(BigInt(0))
-  
-  const hasPendingWithdraws = Object.keys(pendingWithdraws).length > 0
   
   // Fetch account balance for debugging
   useEffect(() => {
@@ -56,7 +52,6 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
           owner: accountId,
           coinType: USDC_COIN_TYPE
         });
-        
         
         // Calculate total balance
         const total = coins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
@@ -172,53 +167,6 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
     }
   };
   
-  const handleCompleteWithdraw = async (key: string) => {
-    if (!currentAccount?.address) return;
-    
-    try {
-      setIsSubmitting(true);
-      
-      // Create transaction with gas budget
-      const tx = new Transaction();
-      tx.setGasBudget(GAS_BUDGET);
-      
-      console.log("Completing Withdraw:", {
-        userAddress: currentAccount.address,
-        accountId,
-        key
-      });
-      
-      // Add complete withdraw action to transaction
-      await completeWithdraw(
-        currentAccount.address,
-        accountId,
-        tx,
-        key
-      );
-      
-      const result = await signAndExecute({
-        suiClient,
-        currentAccount,
-        tx,
-        signTransaction,
-        options: {showEffects: true},
-        toast
-      });
-      
-      console.log("Complete Result:", result);
-      handleTxResult(result, toast);
-      refreshClient();
-      
-      // Refresh page after successful transaction
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (error) {
-      console.error("Error completing withdraw:", error);
-      toast.error("Failed to complete withdrawal: " + ((error as Error).message || String(error)));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
   // Display current USDC balance above the form
   const displayBalance = () => {
     const formatted = (Number(accountBalance) / 1_000_000).toLocaleString(undefined, {
@@ -227,34 +175,6 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
     });
     return `${formatted} USDC`;
   };
-  
-  // If user is backup and there are pending withdraws, show complete button
-  if (isBackup && hasPendingWithdraws) {
-    return (
-      <Card className="bg-[#2A2A2F] border-none shadow-lg w-full my-4">
-        <CardContent className="pt-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Complete Withdrawal</h2>
-          
-          <div className="space-y-4">
-            {Object.entries(pendingWithdraws).map(([key, intent]) => (
-              <div key={key} className="p-4 border border-gray-700 rounded-lg">
-                <div className="text-sm text-gray-300 mb-1">Amount: {parseInt(intent.args.amount) / 1_000_000} USDC</div>
-                <div className="text-sm text-gray-300 mb-3">Recipient: {intent.args.recipient}</div>
-                
-                <Button 
-                  onClick={() => handleCompleteWithdraw(key)}
-                  disabled={isSubmitting}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  {isSubmitting ? "Processing..." : "Complete Withdraw"}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
   
   // If user is owner, show form to initiate withdraw
   if (isOwner) {
@@ -304,15 +224,4 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
       </Card>
     )
   }
-  
-  // If user is neither owner nor backup with pending withdraws
-  return (
-    <Card className="bg-[#2A2A2F] border-none shadow-lg w-full my-4">
-      <CardContent className="pt-6">
-        <p className="text-center text-gray-400">
-          You don't have permission to initiate or complete withdrawals for this account.
-        </p>
-      </CardContent>
-    </Card>
-  )
 } 
