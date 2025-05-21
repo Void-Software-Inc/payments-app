@@ -53,6 +53,37 @@ export type IntentStatus = {
   deletable: boolean;
 };
 
+// Define interfaces for the coin structure
+interface CoinInstance {
+  ref?: {
+    objectId: string;
+  };
+  amount?: string | number;
+}
+
+interface CoinType {
+  type: string;
+  instances?: CoinInstance[];
+}
+
+interface ExtendedPayment extends Payment {
+  lockedObjects: string[];
+}
+
+interface OwnedObjects {
+  coins: {
+    [key: string]: {
+      type: string;
+      instances?: {
+        ref?: {
+          objectId: string;
+        };
+        amount?: string | number;
+      }[];
+    };
+  };
+}
+
 export function usePaymentClient() {
   const { initClient } = usePaymentStore();
 
@@ -170,6 +201,19 @@ export function usePaymentClient() {
     } catch (error) {
       console.error("Error getting user payment accounts:", error);
       return []; // Return empty array instead of throwing
+    }
+  };
+
+  const getIntents = async (userAddr: string, accountId: string) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      if (!client.intents) {
+        throw new Error('Intents not available on client');
+      }
+      return client.intents.intents;
+    } catch (error) {
+      console.error("Error getting intents:", error);
+      throw error;
     }
   };
 
@@ -528,6 +572,55 @@ export function usePaymentClient() {
     }
   };
 
+  const getWithdrawIntentAmounts = async (userAddr: string, accountId: string): Promise<{ id: string, amount: string }> => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      const account = client.paymentAccount as ExtendedPayment;
+      const ownedObjects = client.ownedObjects as unknown as OwnedObjects;
+      
+      if (!ownedObjects?.coins) {
+        return { id: '', amount: '0' };
+      }
+
+      // Find USDC coin type
+      const usdcCoinEntry = Object.entries(ownedObjects.coins).find(
+        ([_, coin]) => coin.type.includes("usdc::USDC")
+      );
+
+      if (!usdcCoinEntry) {
+        return { id: '', amount: '0' };
+      }
+
+      const [usdcCoinId, usdcCoin] = usdcCoinEntry;
+
+      // Get instances from USDC coin
+      if (usdcCoin.instances && Array.isArray(usdcCoin.instances)) {
+        // For each instance in USDC coin
+        for (const instance of usdcCoin.instances) {
+          if (!instance?.ref?.objectId) continue;
+
+          const objectId = instance.ref.objectId;
+          
+          // Check if this object is in lockedObjects
+          if (account.lockedObjects && account.lockedObjects.includes(objectId)) {
+            // Get the amount from the instance
+            if (instance.amount) {
+              return {
+                id: objectId,
+                amount: instance.amount.toString()
+              };
+            }
+          }
+        }
+      }
+
+      return { id: '', amount: '0' };
+    } catch (error) {
+      console.error("Error getting withdraw intent amounts:", error);
+      return { id: '', amount: '0' };
+    }
+  };
+
   return {
     initPaymentClient,
     refresh,
@@ -541,6 +634,7 @@ export function usePaymentClient() {
     getPendingPayments,
     getPaymentDetail,
     getIntent,
+    getIntents,
     issuePayment,
     makePayment,
     deletePayment,
@@ -549,6 +643,7 @@ export function usePaymentClient() {
     updateVerifiedDeps,
     setRecoveryAddress,
     initiateWithdraw,
-    completeWithdraw
+    completeWithdraw,
+    getWithdrawIntentAmounts
   };
 }

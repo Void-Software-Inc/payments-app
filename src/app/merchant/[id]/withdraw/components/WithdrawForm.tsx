@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,7 @@ import { usePaymentStore } from "@/store/usePaymentStore"
 // USDC coin type
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
 // Gas budget (in MIST, where 1 SUI = 10^9 MIST)
-const GAS_BUDGET = 10000000 // 0.01 SUI
+const GAS_BUDGET = 50000000 // 0.05 SUI - Increased to handle complex transactions
 
 interface WithdrawFormProps {
   accountId: string
@@ -28,7 +28,7 @@ interface WithdrawFormProps {
 }
 
 export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }: WithdrawFormProps) {
-  const { initiateWithdraw, completeWithdraw } = usePaymentClient()
+  const { initiateWithdraw, completeWithdraw, getPaymentAccount } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
   const signTransaction = useSignTransaction()
@@ -36,72 +36,160 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { refreshClient } = usePaymentStore()
+  const { resetClient } = usePaymentStore()
+  const [accountBalance, setAccountBalance] = useState<bigint>(BigInt(0))
   
   const hasPendingWithdraws = Object.keys(pendingWithdraws).length > 0
   
-  
+  // Fetch account balance for debugging
+  useEffect(() => {
+    const fetchAccountBalance = async () => {
+      if (!currentAccount?.address || !accountId) return;
+      
+      try {
+        // Get payment account
+        const account = await getPaymentAccount(currentAccount.address, accountId);
+        
+        // Get coins for the account
+        const coins = await suiClient.getCoins({
+          owner: accountId,
+          coinType: USDC_COIN_TYPE
+        });
+        
+        
+        // Calculate total balance
+        const total = coins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
+        setAccountBalance(total);
+        
+        // Also check SUI balance for gas
+        const suiCoins = await suiClient.getCoins({
+          owner: currentAccount.address,
+          coinType: "0x2::sui::SUI"
+        });
+        
+        const totalSui = suiCoins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
+        
+      } catch (error) {
+        console.error("Error fetching account balance:", error);
+      }
+    };
+    
+    fetchAccountBalance();
+  }, [currentAccount, accountId, suiClient, getPaymentAccount]);
   
   const handleInitiateWithdraw = async () => {
     if (!currentAccount?.address || !amount || !recipient) return
     
     try {
-      setIsSubmitting(true)
+      setIsSubmitting(true);
+      
+      // Check if amount is valid and available
+      const amountBigInt = BigInt(parseFloat(amount) * 1_000_000); // 6 decimals for USDC
+      
+      console.log("Withdraw Request:", {
+        amount: amountBigInt.toString(),
+        formattedAmount: parseFloat(amount),
+        accountBalance: accountBalance.toString(),
+        recipient,
+        accountId,
+        gasAmount: GAS_BUDGET.toString()
+      });
+      
+      // Verify sufficient balance
+      if (amountBigInt > accountBalance) {
+        toast.error(`Insufficient balance. Available: ${Number(accountBalance) / 1_000_000} USDC`);
+        setIsSubmitting(false);
+        return;
+      }
       
       // Create transaction with gas budget
-      const tx = new Transaction()
+      const tx = new Transaction();
+      tx.setGasBudget(GAS_BUDGET);
       
-      // Convert amount to USDC with 6 decimals
-      const amountBigInt = BigInt(parseFloat(amount) * 1_000_000) // 6 decimals for USDC
-      const key = `withdraw_${Date.now()}`
+      const key = `withdraw_${Date.now()}`;
       
-      // Add withdraw action to transaction
-      await initiateWithdraw(
-        currentAccount.address,
-        accountId,
-        tx,
-        key,
-        USDC_COIN_TYPE,
-        amountBigInt,
-        recipient
-      )
+      try {
+        // Add withdraw action to transaction
+        await initiateWithdraw(
+          currentAccount.address,
+          accountId,
+          tx,
+          key,
+          USDC_COIN_TYPE,
+          amountBigInt,
+          recipient
+        );
+        
+        console.log("Transaction Built:", {
+          userAddress: currentAccount.address,
+          accountId,
+          key,
+          coinType: USDC_COIN_TYPE,
+          amount: amountBigInt.toString(),
+          recipient
+        });
 
-      console.log("currentAccount = ", currentAccount.address)
-      console.log("accountId = ", accountId)
-      console.log("tx = ", tx)
-      console.log("key = ", key)
-      console.log("USDC_COIN_TYPE = ", USDC_COIN_TYPE)
-      console.log("amountBigInt = ", amountBigInt)
-      console.log("recipient = ", recipient)
-      
-      const result = await signAndExecute({
-        suiClient,
-        currentAccount,
-        tx,
-        signTransaction,
-        options: {showEffect: true},
-        toast
-      });
-
-      handleTxResult(result, toast);
-      refreshClient();
-      
+        // Execute transaction
+        const txResult = await signAndExecute({
+          suiClient,
+          currentAccount,
+          tx,
+          signTransaction,
+          options: {showEffects: true},
+          toast
+        }).catch(err => {
+          if (err.message?.includes('User rejected')) {
+            toast.error("Transaction canceled by user");
+            setIsSubmitting(false);
+            return null;
+          }
+          throw err;
+        });
+        
+        if (txResult) {
+          console.log("Transaction Result:", txResult);
+          handleTxResult(txResult, toast);
+          
+          // Clear form and reset client
+          setAmount("");
+          setRecipient("");
+          resetClient();
+          usePaymentStore.getState().triggerRefresh();
+          
+          // Refresh page after successful transaction
+          setTimeout(() => window.location.reload(), 2000);
+        } else {
+          setIsSubmitting(false);
+        }
+      } catch (initiateError: any) {
+        console.error("Error initiating:", initiateError);
+        toast.error(initiateError.message || "Failed to initiate withdraw");
+        setIsSubmitting(false);
+      }
     } catch (error) {
-      console.error("Error initiating withdraw:", error)
-      toast.error("Failed to initiate withdrawal: " + ((error as Error).message || String(error)))
+      console.error("Error initiating withdraw:", error);
+      console.error("Failed to initiate withdrawal: " + ((error as Error).message || String(error)));
+      toast.error("Failed to initiate withdrawal: " + ((error as Error).message || String(error)));
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
   
   const handleCompleteWithdraw = async (key: string) => {
-    if (!currentAccount?.address) return
+    if (!currentAccount?.address) return;
     
     try {
-      setIsSubmitting(true)
+      setIsSubmitting(true);
       
-      // Create transaction
-      const tx = new Transaction()
+      // Create transaction with gas budget
+      const tx = new Transaction();
+      tx.setGasBudget(GAS_BUDGET);
+      
+      console.log("Completing Withdraw:", {
+        userAddress: currentAccount.address,
+        accountId,
+        key
+      });
       
       // Add complete withdraw action to transaction
       await completeWithdraw(
@@ -109,27 +197,40 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
         accountId,
         tx,
         key
-      )
+      );
       
       const result = await signAndExecute({
         suiClient,
         currentAccount,
         tx,
         signTransaction,
-        options: {showEffect: true},
+        options: {showEffects: true},
         toast
       });
-
+      
+      console.log("Complete Result:", result);
       handleTxResult(result, toast);
-      refreshClient();
-
+      resetClient();
+      usePaymentStore.getState().triggerRefresh();
+      
+      // Refresh page after successful transaction
+      setTimeout(() => window.location.reload(), 2000);
     } catch (error) {
-      console.error("Error completing withdraw:", error)
-      toast.error("Failed to complete withdrawal: " + ((error as Error).message || String(error)))
+      console.error("Error completing withdraw:", error);
+      toast.error("Failed to complete withdrawal: " + ((error as Error).message || String(error)));
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
+  
+  // Display current USDC balance above the form
+  const displayBalance = () => {
+    const formatted = (Number(accountBalance) / 1_000_000).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6
+    });
+    return `${formatted} USDC`;
+  };
   
   // If user is backup and there are pending withdraws, show complete button
   if (isBackup && hasPendingWithdraws) {
@@ -165,6 +266,11 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
       <Card className="bg-[#2A2A2F] border-none shadow-lg w-full my-4">
         <CardContent className="pt-6">
           <h2 className="text-xl font-semibold text-white mb-4">Initiate Withdrawal</h2>
+          
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-gray-400">Available balance:</span>
+            <span className="text-sm font-medium text-white">{displayBalance()}</span>
+          </div>
           
           <div className="space-y-4">
             <div className="space-y-2">
