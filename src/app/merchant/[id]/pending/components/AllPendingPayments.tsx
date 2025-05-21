@@ -242,20 +242,26 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
     }
     
     try {
-      // expirationTime is a duration in milliseconds (6 hours = 21600000ms)
-      const durationMs = Number(rawIntent.fields.expirationTime);
-      // creationTime is a timestamp
-      const creationTime = Number(rawIntent.fields.creationTime);
-      // Calculate actual expiration timestamp by adding duration to creation time
-      const expirationTimestamp = creationTime + durationMs;
-      const now = Date.now();
+      const isWithdrawal = rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent');
+      let expirationTimestamp: number;
       
-      // Create a Date object from the calculated expiration timestamp
+      if (isWithdrawal) {
+        // For withdrawals, expirationTime is already a timestamp in milliseconds
+        expirationTimestamp = Number(rawIntent.fields.expirationTime);
+      } else {
+        // For other intents, expirationTime is a duration in milliseconds
+        const durationMs = Number(rawIntent.fields.expirationTime);
+        const creationTime = Number(rawIntent.fields.creationTime);
+        expirationTimestamp = creationTime + durationMs;
+      }
+      
+      const now = Date.now();
       const expirationDate = new Date(expirationTimestamp);
       
       // Use formatDistanceToNow for both expired and active payments
       return formatDistanceToNow(expirationDate, { addSuffix: true });
     } catch (e) {
+      console.error("Error calculating expiration time:", e);
       return null;
     }
   }
@@ -372,7 +378,8 @@ export function AllPendingPayments({ merchantId }: AllPendingPaymentsProps) {
                   </div>
                   <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
                     <p className="text-lg font-bold text-white truncate">
-                      + {formatAmount(payment.amount, payment.coinType)}
+                      {payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') ? '- ' : '+ '}
+                      {formatAmount(payment.amount, payment.coinType)}
                     </p>
                     {payment.status === 'pending' && payment.rawIntent?.fields?.expirationTime && (
                       <p className="text-xs text-gray-400">Expires {getExpirationTime(payment.rawIntent)}</p>

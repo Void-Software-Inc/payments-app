@@ -192,7 +192,10 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
                       <p className="text-sm text-gray-400">{payment.date} - {payment.time}</p>
                     </div>
                     <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
-                      <p className="text-lg font-bold text-white truncate">+ {formatAmount(payment.amount, payment.coinType)}</p>
+                      <p className="text-lg font-bold text-white truncate">
+                        {payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') ? '- ' : '+ '}
+                        {formatAmount(payment.amount, payment.coinType)}
+                      </p>
                     </div>
                   </div>
                 </div>
