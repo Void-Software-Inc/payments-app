@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
-import { Toaster } from "sonner"
 import { WithdrawForm } from "./components/WithdrawForm"
 import { WithdrawStatus } from "./components/WithdrawStatus"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
@@ -52,7 +51,6 @@ export default function WithdrawPage() {
       <div className="w-full pt-20 pb-24 flex flex-col items-center">
         <div className="w-[90%] h-full">
           <div className="container mx-auto py-0 max-w-2xl">
-            <Toaster position="bottom-center" richColors closeButton />
             <h1 className="text-2xl font-bold text-white mb-6">Withdraw Funds</h1>
             
             <WithdrawStatus 

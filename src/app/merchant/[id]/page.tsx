@@ -7,8 +7,6 @@ import { Payment } from "@account.tech/payment";
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { useSuiClient } from "@mysten/dapp-kit"
-import { Toaster } from "sonner"
-import { usePaymentStore } from "@/store/usePaymentStore"
 import { BalanceCard } from "@/components/BalanceCard"
 import { truncateMiddle } from "@/utils/formatters"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
@@ -118,7 +116,6 @@ export default function PaymentAccountPage() {
       <div className="w-full pt-20 pb-24 flex flex-col items-center">
         <div className="w-[90%] h-full">
           <div className="container mx-auto py-0 max-w-2xl">
-            <Toaster position="bottom-center" richColors closeButton />
             <div className="mb-6 flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold text-white">{accountName}</h1>
