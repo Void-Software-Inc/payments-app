@@ -5,8 +5,7 @@ import { ArrowUpRight, Download, Upload, Wallet2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useSuiClient } from "@mysten/dapp-kit";
-import { useTokenPrice } from "@/hooks/useTokenPrice";
-import { formatSuiBalance, formatUsdBalance } from "@/utils/formatters";
+import { formatSuiBalance } from "@/utils/formatters";
 import Link from "next/link";
 import { getCoinDecimals } from "@/utils/helpers";
 
@@ -38,11 +37,6 @@ export function BalanceCard({
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
   
-  // Get real-time SUI price in USD using our custom hook
-  const { price: suiPrice, loading: priceLoading } = useTokenPrice('sui', {
-    refreshInterval: 60000 // Update price every minute
-  });
-
   useEffect(() => {
     // If customBalance and customUsdcBalance are provided, use them instead of fetching
     if (customBalance !== undefined) {
@@ -153,9 +147,6 @@ export function BalanceCard({
           {/* Balance Amount */}
           <div className="text-white text-5xl font-semibold">
             {displayedBalance}
-            {priceLoading && showSui && (
-              <span className="text-xs ml-2 text-gray-400">(updating...)</span>
-            )}
           </div>
 
           {/* Action Buttons - preventing click propagation so they work independently */}
