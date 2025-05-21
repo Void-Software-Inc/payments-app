@@ -1,5 +1,5 @@
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import { ScanEye, Plus, CirclePlus, HandCoins } from 'lucide-react';
+import { CirclePlus, Send } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export function ActionButtonsMerchant() {
@@ -28,7 +28,7 @@ export function ActionButtonsMerchant() {
         className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5E6164] hover:bg-black/30"
         disabled={isPayPage}
       >
-        <HandCoins className="size-7 text-white" />
+        <Send className="size-7 text-white" />
       </Button>
       <Button
         variant="outline"

@@ -3,6 +3,13 @@ import { Html5Qrcode, CameraDevice } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { X, RefreshCw, Camera } from 'lucide-react';
 
+// Extend the Window interface to override console methods
+declare global {
+  interface Window {
+    originalConsoleWarn?: typeof console.warn;
+  }
+}
+
 interface QrCodeScannerProps {
   onScanSuccess: (paymentId: string) => void;
   onClose: () => void;
@@ -17,6 +24,8 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
   const [isIOS, setIsIOS] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastErrorRef = useRef<string>('');
+  const errorCountRef = useRef<number>(0);
 
   // Detect if user is on mobile device
   useEffect(() => {
@@ -64,6 +73,34 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
         document.head.removeChild(style);
       };
     }
+  }, []);
+
+  // Silence QR code error warnings
+  useEffect(() => {
+    // Store original console.warn
+    window.originalConsoleWarn = console.warn;
+    
+    // Override console.warn to filter out QR code errors
+    console.warn = function(...args) {
+      const message = args[0]?.toString() || '';
+      if (message.includes('QR code parse error') || 
+          message.includes('No MultiFormat Readers') || 
+          message.includes('No barcode or QR code detected')) {
+        // Silently ignore these common scanner warnings
+        return;
+      }
+      // Forward other warnings to original console.warn
+      if (window.originalConsoleWarn) {
+        window.originalConsoleWarn.apply(console, args);
+      }
+    };
+    
+    return () => {
+      // Restore original console.warn when component unmounts
+      if (window.originalConsoleWarn) {
+        console.warn = window.originalConsoleWarn;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -123,23 +160,39 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
       await scannerRef.current.stop().catch(console.error);
     }
 
+    // Reset error tracking
+    lastErrorRef.current = '';
+    errorCountRef.current = 0;
+
     // Calculate optimal QR box size based on container width
     const containerWidth = containerRef.current?.clientWidth || 300;
-    // Make sure qrboxSize is square (same width and height)
-    const qrboxSize = Math.min(containerWidth - 20, 250);
+    // Adjust QR box size for better detection
+    const qrboxSize = Math.min(containerWidth - 30, 240);
 
     setError(null);
     setIsScanning(true);
     
     try {
-      // iOS specific configuration
+      // Enhanced configuration with optimized settings for better detection
       const config = {
-        fps: isIOS ? 5 : 10, // Lower fps on iOS to reduce processing load
+        fps: 10, // Balanced fps for all devices
         qrbox: { width: qrboxSize, height: qrboxSize },
-        // Force 1:1 aspect ratio for square camera view
         aspectRatio: 1.0,
-        disableFlip: isIOS, // Disable flip on iOS as it can cause issues
-        formatsToSupport: ['QR_CODE']
+        disableFlip: isIOS,
+        formatsToSupport: ['QR_CODE'],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
+        videoConstraints: {
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 },
+          facingMode: "environment",
+          // Advanced camera settings for better detection
+          advanced: [
+            { zoom: isIOS ? 1.5 : 1.2 }, // Slight zoom to better focus on QR codes
+            { focusMode: "continuous" }
+          ]
+        }
       };
       
       await scannerRef.current.start(
@@ -149,10 +202,20 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
           handleQrCodeScan(decodedText);
         },
         (errorMessage: string) => {
-          // Silent error handling for scanning errors
-          console.warn(errorMessage);
+          // Track repeated errors to detect hardware issues
+          if (errorMessage === lastErrorRef.current) {
+            errorCountRef.current++;
+            // If same error appears more than 20 times in succession
+            if (errorCountRef.current > 20 && !error) {
+              setError("Having trouble scanning? Try in better lighting or restart the scanner.");
+            }
+          } else {
+            lastErrorRef.current = errorMessage;
+            errorCountRef.current = 1;
+          }
         }
       );
+      
     } catch (err: any) {
       console.error("Error starting scanner:", err);
       setError(`Error starting scanner: ${err.message || err}`);
@@ -187,6 +250,13 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
       }
       
       if (paymentId) {
+        // Add visual feedback
+        const qrReader = document.getElementById('qr-reader');
+        if (qrReader) {
+          qrReader.classList.add('success-scan');
+          setTimeout(() => qrReader.classList.remove('success-scan'), 500);
+        }
+        
         // Stop scanner
         if (scannerRef.current) {
           scannerRef.current.stop().catch(console.error);
@@ -247,6 +317,18 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
             <Camera className="size-4 mr-2" /> Switch Camera
           </Button>
         )}
+        
+        <style jsx>{`
+          @keyframes success-flash {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+          }
+          :global(.success-scan) {
+            animation: success-flash 0.5s ease-out;
+            border: 2px solid #16a34a !important;
+          }
+        `}</style>
         
         <p className="text-xs text-gray-400 mt-4 text-center">
           Position your QR code within the scanner frame.

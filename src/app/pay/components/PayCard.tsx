@@ -316,7 +316,7 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
                 onClick={() => setShowScanner(true)}
                 className="h-14 w-14 bg-transparent border-[#5E6164]"
               >
-                <QrCode className="h-6 w-6 text-white" />
+                <QrCode className="size-8 text-white" />
               </Button>
               </div>
     </div>
