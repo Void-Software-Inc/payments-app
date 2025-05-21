@@ -206,7 +206,7 @@ export function usePaymentClient() {
 
   const getIntents = async (userAddr: string, accountId: string) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       if (!client.intents) {
         throw new Error('Intents not available on client');
       }
@@ -574,7 +574,7 @@ export function usePaymentClient() {
 
   const getWithdrawIntentAmounts = async (userAddr: string, accountId: string): Promise<{ id: string, amount: string }> => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       const account = client.paymentAccount as ExtendedPayment;
       const ownedObjects = client.ownedObjects as unknown as OwnedObjects;
       
