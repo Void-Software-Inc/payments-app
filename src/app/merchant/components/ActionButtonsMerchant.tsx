@@ -26,7 +26,6 @@ export function ActionButtonsMerchant() {
         variant="outline"
         size="icon"
         className="w-20 h-16 rounded-lg bg-transparent backdrop-blur-md border-[#5E6164] hover:bg-black/30"
-        onClick={handlePay}
         disabled={isPayPage}
       >
         <HandCoins className="size-7 text-white" />
