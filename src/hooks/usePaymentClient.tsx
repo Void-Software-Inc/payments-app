@@ -1,9 +1,8 @@
 'use client';
 import { PaymentClient, Payment } from "@account.tech/payment";
-import { Transaction, TransactionResult } from "@mysten/sui/transactions";
+import { Transaction } from "@mysten/sui/transactions";
 import { usePaymentStore } from "@/store/usePaymentStore";
 import { Intent } from "@account.tech/core";
-import { NETWORK_TYPE } from "@/constants/network";
 
 // Define interface for Intent with additional properties used in our app
 interface ExtendedIntent extends Intent {
@@ -86,18 +85,18 @@ interface OwnedObjects {
 }
 
 export function usePaymentClient() {
-  const { getOrInitClient, resetClient } = usePaymentStore();
+  const { initClient } = usePaymentStore();
 
   const initPaymentClient = async (
     userAddr: string,
     multisigId?: string
   ): Promise<PaymentClient> => {
-    return getOrInitClient(userAddr, multisigId);
+    return initClient(userAddr, multisigId);
   };
 
   const refresh = async (userAddr: string) => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       await client.refresh();
     } catch (error) {
       console.error("Error refreshing user:", error);
@@ -107,7 +106,7 @@ export function usePaymentClient() {
 
   const switchAccount = async (userAddr: string, paymentAccountId: string) => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       await client.switchAccount(paymentAccountId);
     } catch (error) {
       console.error("Error switching Payment Account:", error);
@@ -126,7 +125,7 @@ export function usePaymentClient() {
     memberAddresses?: string[]
   ) => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       
       // Check if we need to provide newUser parameters
       const userParams = !client.user?.id 
@@ -143,7 +142,7 @@ export function usePaymentClient() {
 
   const getUser = async (userAddr: string) => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       return client.user
     } catch (error) {
       console.error("Error getting user:", error);
@@ -153,7 +152,7 @@ export function usePaymentClient() {
 
   const getUserProfile = async (userAddr: string): Promise<Profile> => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       // Check if getUserProfile exists on the client
       if (typeof client.getUserProfile !== 'function') {
         console.warn('getUserProfile is not available on the client', client);
@@ -171,7 +170,7 @@ export function usePaymentClient() {
 
   const getPaymentAccount = async (userAddr: string, accountId: string): Promise<Payment> => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       return client.paymentAccount;
     } catch (error) {
       console.error("Error getting payment account:", error);
@@ -186,7 +185,7 @@ export function usePaymentClient() {
     newName: string
   ) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       client.modifyName(tx, newName);
       return true;
     } catch (error) {
@@ -197,7 +196,7 @@ export function usePaymentClient() {
 
   const getUserPaymentAccounts = async (userAddr: string): Promise<{ id: string; name: string }[]> => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       return client.getUserPaymentAccounts();
     } catch (error) {
       console.error("Error getting user payment accounts:", error);
@@ -207,7 +206,7 @@ export function usePaymentClient() {
 
   const getIntents = async (userAddr: string, accountId: string) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       if (!client.intents) {
         throw new Error('Intents not available on client');
       }
@@ -221,7 +220,7 @@ export function usePaymentClient() {
   //====Pending====//
   const getPendingPayments = async (userAddr: string, accountId?: string): Promise<Record<string, PendingPayment>> => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       const pendingIntents = client.getPendingPayments();
       
       // Transform the intents into a more app-friendly format
@@ -270,7 +269,7 @@ export function usePaymentClient() {
           time: formattedTime,
           status,
           coinType,
-          rawIntent: intent
+          rawIntent: intent as Intent
         };
       }
       
@@ -285,7 +284,7 @@ export function usePaymentClient() {
     // The payment may have been deleted, so we need to be careful with the client call
     let client;
     try {
-      client = await getOrInitClient(userAddr, accountId);
+      client = await initClient(userAddr, accountId);
     } catch (error) {
       console.error("Error initializing client:", error);
       return null;
@@ -347,7 +346,7 @@ export function usePaymentClient() {
         time: formattedTime,
         status,
         coinType,
-        rawIntent: intent
+        rawIntent: intent as Intent
       };
     } catch (error) {
       console.error("Error processing payment detail:", error);
@@ -358,7 +357,7 @@ export function usePaymentClient() {
   // Get an intent directly by its ID
   const getIntent = async (userAddr: string, intentId: string) => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       return client.getIntent(intentId);
     } catch (error) {
       console.error("Error getting intent:", error);
@@ -370,7 +369,7 @@ export function usePaymentClient() {
     
   const issuePayment = async (userAddr: string, accountId: string, tx: Transaction, description: string, coinType: string, amount: bigint) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       client.issuePayment(tx, description, coinType, amount);
     } catch (error) {
       console.error("Error issuing payment:", error);
@@ -385,7 +384,7 @@ export function usePaymentClient() {
     tipAmount?: bigint
   ) => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       
       // Get the intent to check if it's expired
       const intent = client.getIntent(paymentId);
@@ -421,7 +420,7 @@ export function usePaymentClient() {
     intentKey: string
   ) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       
       // Get the intent status to check if it's deletable
       const status = client.getIntentStatus(intentKey);
@@ -441,7 +440,7 @@ export function usePaymentClient() {
   // Get intent status directly from the client
   const getIntentStatus = async (userAddr: string, intentKey: string): Promise<IntentStatus> => {
     try {
-      const client = await getOrInitClient(userAddr);
+      const client = await initClient(userAddr);
       return client.getIntentStatus(intentKey);
     } catch (error) {
       console.error("Error getting intent status:", error);
@@ -451,9 +450,9 @@ export function usePaymentClient() {
 
   const getDepsStatus = async (userAddr: string, paymentAccountId?: string): Promise<DepStatus[]> => {
     try {
-      const client =  paymentAccountId != undefined ? 
-      await getOrInitClient(userAddr, paymentAccountId) 
-      : await getOrInitClient(userAddr);
+      const client = paymentAccountId != undefined ? 
+        await initClient(userAddr, paymentAccountId) 
+        : await initClient(userAddr);
       
       if (!client) {
         console.error("Failed to initialize client for getDepsStatus");
@@ -474,10 +473,6 @@ export function usePaymentClient() {
           return [];
         }
         
-/*        depsStatus.forEach((dep, index) => {
-          console.log(`Dependency ${index}:`, dep);
-        });
- */       
         return depsStatus;
       } catch (innerError) {
         console.error("Error calling client.getDepsStatus():", innerError);
@@ -491,14 +486,14 @@ export function usePaymentClient() {
 
   const updateVerifiedDeps = async (userAddr: string, tx: Transaction, paymentAccountId?: string) => {
     try {
-      const client =  paymentAccountId != undefined ? 
-      await getOrInitClient(userAddr, paymentAccountId) 
-      : await getOrInitClient(userAddr);
+      const client = paymentAccountId != undefined ? 
+        await initClient(userAddr, paymentAccountId) 
+        : await initClient(userAddr);
 
       // Get dependencies status first to check what needs updating
       const deps = paymentAccountId != undefined ? 
-      await getDepsStatus(userAddr, paymentAccountId) 
-      : await getDepsStatus(userAddr);
+        await getDepsStatus(userAddr, paymentAccountId) 
+        : await getDepsStatus(userAddr);
       const depsToUpdate = deps.filter(dep => dep.latestVersion > dep.currentVersion);
       
       if (depsToUpdate.length === 0) {
@@ -527,7 +522,7 @@ export function usePaymentClient() {
       // Create a new client specifically for this operation
       // Force reinitializing to ensure fresh state
       console.log("Initializing fresh client for recovery address setup");
-      const client = await getOrInitClient(userAddr, accountId);     
+      const client = await initClient(userAddr, accountId);     
        
       console.log('Calling setRecoveryAddress with a fresh client:', { 
         tx, 
@@ -554,7 +549,7 @@ export function usePaymentClient() {
     recipient: string
   ) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       client.initiateWithdraw(tx, key, coinType, amount, recipient);
     } catch (error) {
       console.error("Error initiating withdraw:", error);
@@ -569,7 +564,7 @@ export function usePaymentClient() {
     key: string
   ) => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       client.completeWithdraw(tx, key);
     } catch (error) {
       console.error("Error completing withdraw:", error);
@@ -579,7 +574,7 @@ export function usePaymentClient() {
 
   const getWithdrawIntentAmounts = async (userAddr: string, accountId: string): Promise<{ id: string, amount: string }> => {
     try {
-      const client = await getOrInitClient(userAddr, accountId);
+      const client = await initClient(userAddr, accountId);
       const account = client.paymentAccount as ExtendedPayment;
       const ownedObjects = client.ownedObjects as unknown as OwnedObjects;
       

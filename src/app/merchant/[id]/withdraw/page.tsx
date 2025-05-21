@@ -11,12 +11,14 @@ import { WithdrawForm } from "./components/WithdrawForm"
 import { WithdrawStatus } from "./components/WithdrawStatus"
 import { WithdrawIntents } from "./components/WithdrawIntents"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
+import { usePaymentStore } from "@/store/usePaymentStore"
 
 export default function WithdrawPage() {
   const params = useParams()
   const { getPaymentAccount } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const [account, setAccount] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isOwner, setIsOwner] = useState(false)
@@ -60,7 +62,7 @@ export default function WithdrawPage() {
     }
 
     loadAccount()
-  }, [currentAccount, accountId])
+  }, [currentAccount, accountId, refreshCounter])
 
   if (isLoading) {
     return <div className="container mx-auto p-8 text-center">Loading...</div>

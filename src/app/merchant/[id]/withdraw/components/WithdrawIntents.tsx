@@ -5,6 +5,7 @@ import { useCurrentAccount } from "@mysten/dapp-kit"
 import { Card, CardContent } from "@/components/ui/card"
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { formatDistanceToNow } from "date-fns"
+import { usePaymentStore } from "@/store/usePaymentStore"
 
 interface WithdrawIntentsProps {
   merchantId: string
@@ -34,7 +35,8 @@ export function WithdrawIntents({ merchantId }: WithdrawIntentsProps) {
   const [isLoading, setIsLoading] = useState(true)
   const currentAccount = useCurrentAccount()
   const { getIntents, getWithdrawIntentAmounts } = usePaymentClient()
-
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
+  
   useEffect(() => {
     const fetchIntents = async () => {
       if (!currentAccount?.address) return
@@ -77,7 +79,7 @@ export function WithdrawIntents({ merchantId }: WithdrawIntentsProps) {
     }
 
     fetchIntents()
-  }, [currentAccount, merchantId])
+  }, [currentAccount, merchantId, refreshCounter])
 
   // Format amount for display
   const formatAmount = (amount: string, decimals: number = 6): string => {

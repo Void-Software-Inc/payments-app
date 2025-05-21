@@ -36,7 +36,8 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { resetClient } = usePaymentStore()
+  const { refreshClient } = usePaymentStore()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const [accountBalance, setAccountBalance] = useState<bigint>(BigInt(0))
   
   const hasPendingWithdraws = Object.keys(pendingWithdraws).length > 0
@@ -48,7 +49,7 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
       
       try {
         // Get payment account
-        const account = await getPaymentAccount(currentAccount.address, accountId);
+        await getPaymentAccount(currentAccount.address, accountId);
         
         // Get coins for the account
         const coins = await suiClient.getCoins({
@@ -75,7 +76,7 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
     };
     
     fetchAccountBalance();
-  }, [currentAccount, accountId, suiClient, getPaymentAccount]);
+  }, [currentAccount, accountId, suiClient, refreshCounter]);
   
   const handleInitiateWithdraw = async () => {
     if (!currentAccount?.address || !amount || !recipient) return
@@ -153,11 +154,7 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
           // Clear form and reset client
           setAmount("");
           setRecipient("");
-          resetClient();
-          usePaymentStore.getState().triggerRefresh();
-          
-          // Refresh page after successful transaction
-          setTimeout(() => window.location.reload(), 2000);
+          refreshClient();
         } else {
           setIsSubmitting(false);
         }
@@ -210,8 +207,7 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
       
       console.log("Complete Result:", result);
       handleTxResult(result, toast);
-      resetClient();
-      usePaymentStore.getState().triggerRefresh();
+      refreshClient();
       
       // Refresh page after successful transaction
       setTimeout(() => window.location.reload(), 2000);

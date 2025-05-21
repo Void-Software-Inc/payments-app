@@ -8,7 +8,7 @@ import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { PlusCircle } from "lucide-react"
 import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { truncateMiddle } from "@/utils/formatters"
 
 interface PaymentAccount {
@@ -21,7 +21,7 @@ export function PaymentAccountsList() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  const { getOrInitClient, refreshTrigger } = usePaymentStore()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const { getUserPaymentAccounts } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const pathname = usePathname()
@@ -35,13 +35,6 @@ export function PaymentAccountsList() {
       
       try {
         setIsLoading(true)
-        const client = await getOrInitClient(currentAccount.address)
-        
-        if (!client) {
-          setError("Client not initialized")
-          return
-        }
-        
         // Get payment accounts without calling refresh directly
         // The refresh is handled internally by the client when needed
         const accounts = await getUserPaymentAccounts(currentAccount.address)
@@ -56,7 +49,7 @@ export function PaymentAccountsList() {
     }
     
     fetchPaymentAccounts()
-  }, [currentAccount?.address, getOrInitClient, refreshTrigger, pathname])
+  }, [currentAccount?.address, refreshCounter, pathname])
   
   if (isLoading) {
     return (

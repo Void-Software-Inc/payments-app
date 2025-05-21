@@ -16,8 +16,6 @@ export function ProfileSections({ username }: ProfileSectionsProps) {
   
   const sections: ProfileSection[] = [
     { title: "Username", link: "/profile/username", value: displayName },
-    { title: "Security", link: "/profile/security" },
-    { title: "Transactions", link: "/profile/transactions" }
   ];
 
   return (

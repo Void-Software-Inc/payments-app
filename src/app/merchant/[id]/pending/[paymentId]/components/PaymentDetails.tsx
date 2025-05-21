@@ -8,7 +8,6 @@ import { Copy, Check, Trash2 } from "lucide-react"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
 import { usePaymentClient, PendingPayment, IntentStatus } from "@/hooks/usePaymentClient"
 import { usePaymentStore } from "@/store/usePaymentStore"
-import { formatSuiBalance } from "@/utils/formatters"
 import { Transaction } from "@mysten/sui/transactions"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -23,7 +22,8 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
   const { getPaymentDetail, deletePayment, getIntentStatus, getIntent } = usePaymentClient()
-  const { refreshTrigger, resetClient } = usePaymentStore()
+  const { refreshClient } = usePaymentStore()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   
@@ -33,18 +33,6 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [intentInfo, setIntentInfo] = useState<string>("")
-
-  // Check if payment is deletable
-  const checkPaymentStatus = async () => {
-    if (!currentAccount?.address || !payment) return;
-    
-    try {
-      const status = await getIntentStatus(currentAccount.address, payment.intentKey);
-      setIntentStatus(status);
-    } catch (error) {
-      console.error("Error checking payment status:", error);
-    }
-  }
 
   useEffect(() => {
     // Only proceed if we have the wallet address
@@ -108,7 +96,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
     return () => {
       isMounted = false;
     }
-  }, [currentAccount?.address, merchantId, paymentId, refreshTrigger])
+  }, [currentAccount?.address, merchantId, paymentId, refreshCounter])
 
   const copyToClipboard = () => {
     if (payment?.rawIntent?.fields?.key) {
@@ -167,9 +155,8 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
           // Cancel any ongoing fetch operations to prevent errors
           abortController.abort();
           
-          // Reset client and trigger refresh
-          resetClient();
-          usePaymentStore.getState().triggerRefresh();
+          // Reset client
+          refreshClient();
           
           // Navigate back immediately - state updates will be cancelled by abort controller
           router.push(`/merchant/${merchantId}/pending`);
