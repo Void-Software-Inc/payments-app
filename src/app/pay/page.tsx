@@ -173,7 +173,7 @@ export default function PayPage() {
   }
 
   return (
-    <div className="h-dvh w-dvw flex justify-center items-center">
+    <div className="h-dvh w-dvw flex justify-center items-center overflow-y-auto">
       <div className="w-[90%] h-full pt-16 space-y-6">
         {/* Main Content */}
         <div className="flex items-center justify-between">

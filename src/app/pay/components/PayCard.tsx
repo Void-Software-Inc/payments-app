@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Minus, X } from "lucide-react";
+import { Plus, Minus, X, QrCode } from "lucide-react";
 import { 
   useCurrentAccount, 
   useSuiClient 
@@ -14,7 +14,7 @@ import { formatSuiBalance } from "@/utils/formatters";
 import { getCoinDecimals } from "@/utils/helpers";
 import { usePaymentClient } from "@/hooks/usePaymentClient";
 import Image from "next/image";
-import { QrCodeButton } from "@/components/QrCodeButton";
+import { QrCodeScanner } from "./QrCodeScanner";
 
 // USDC coin type - ensure this matches the BalanceCard.tsx definition
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC";
@@ -33,6 +33,7 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   const [balanceInSui, setBalanceInSui] = useState<bigint>(BigInt(0));
   const [balanceInUsdc, setBalanceInUsdc] = useState<bigint>(BigInt(0));
   const [usdcDecimals, setUsdcDecimals] = useState<number>(6); // Default USDC decimals is usually 6
+  const [showScanner, setShowScanner] = useState(false);
   
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
@@ -152,21 +153,26 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
     }
   };
   
+  const handleScanSuccess = (scannedPaymentId: string) => {
+    setPaymentId(scannedPaymentId);
+    if (error) setError(null);
+  };
+  
   // Format balances for display
   const formattedSuiBalance = formatSuiBalance(balanceInSui);
   const formattedUsdcBalance = formatUsdcBalance(balanceInUsdc, usdcDecimals);
   
   return (
-    <div>
-        <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
+    <div className="pb-24">
+      <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
         <CardContent className="space-y-6 mt-1 mb-3">
-            {/* Payment ID Input */}
-            <div className="space-y-2 mt-2">
+          {/* Payment ID Input */}
+          <div className="space-y-2 mt-2">
             <Label htmlFor="payment-id" className="text-md text-[#c8c8c8] font-medium">
-                Paste link or id
+              Paste link or id
             </Label>
             <div className="flex items-center gap-2">
-                <Input
+              <Input
                 id="payment-id"
                 type="text"
                 value={paymentId}
@@ -174,76 +180,93 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
                 placeholder="suipay/..."
                 className={`h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg ${error ? 'border-amber-500' : ''}`}
                 autoComplete="off"
-                />
+              />
             </div>
-            </div>
-            
-            {/* Tip Amount Input */}
-            <div className="space-y-2 mt-2">
-              <Label htmlFor="tipAmount" className="text-md text-[#c8c8c8] font-medium">
-                Add tip (optional)
-              </Label>
-              <div className="flex items-center gap-2">
-                <Button 
-                  type="button" 
-                  size="icon" 
-                  variant="outline" 
-                  onClick={() => adjustTip(false)}
-                  className="h-8 w-8 bg-transparent border-[#5E6164]"
-                >
-                  <Minus className="h-4 w-4 text-white" />
-                </Button>
-                <Input
-                  id="tipAmount"
-                  value={tipAmount}
-                  onChange={handleTipChange}
-                  placeholder="0.00"
-                  className="h-10 bg-transparent border-[#5E6164] rounded-lg text-white text-md text-center"
-                  autoComplete="off"
-                />
-                <Button 
-                  type="button" 
-                  size="icon" 
-                  variant="outline" 
-                  onClick={() => adjustTip(true)}
-                  className="h-8 w-8 bg-transparent border-[#5E6164]"
-                >
-                  <Plus className="h-4 w-4 text-white" />
-                </Button>
-                <div className="flex items-center ml-1">
-                  <div className="w-4 h-4 relative">
-                    <Image
-                      src="/usdc-logo.webp"
-                      alt="USDC"
-                      fill
-                      sizes="16px"
-                      className="object-contain rounded-full"
-                    />
-                  </div>
-                  <span className="text-white text-sm ml-1">USDC</span>
+          </div>
+          
+          {/* Tip Amount Input */}
+          <div className="space-y-2 mt-2">
+            <Label htmlFor="tipAmount" className="text-md text-[#c8c8c8] font-medium">
+              Add tip (optional)
+            </Label>
+            <div className="flex items-center gap-2">
+              <Button 
+                type="button" 
+                size="icon" 
+                variant="outline" 
+                onClick={() => adjustTip(false)}
+                className="h-8 w-8 bg-transparent border-[#5E6164]"
+              >
+                <Minus className="h-4 w-4 text-white" />
+              </Button>
+              <Input
+                id="tipAmount"
+                value={tipAmount}
+                onChange={handleTipChange}
+                placeholder="0.00"
+                className="h-10 bg-transparent border-[#5E6164] rounded-lg text-white text-md text-center"
+                autoComplete="off"
+              />
+              <Button 
+                type="button" 
+                size="icon" 
+                variant="outline" 
+                onClick={() => adjustTip(true)}
+                className="h-8 w-8 bg-transparent border-[#5E6164]"
+              >
+                <Plus className="h-4 w-4 text-white" />
+              </Button>
+              <div className="flex items-center ml-1">
+                <div className="w-4 h-4 relative">
+                  <Image
+                    src="/usdc-logo.webp"
+                    alt="USDC"
+                    fill
+                    sizes="16px"
+                    className="object-contain rounded-full"
+                  />
                 </div>
+                <span className="text-white text-sm ml-1">USDC</span>
               </div>
             </div>
-            
-            {error && (
-              <div className="text-amber-500 text-sm mt-2 flex items-center">
-                {error}
-              </div>
-            )}
-            
-            {/* Pay Button */}
-            <Button
+          </div>
+          
+          {error && (
+            <div className="text-amber-500 text-sm mt-2 flex items-center">
+              {error}
+            </div>
+          )}
+          
+          {/* Pay Button */}
+          <Button
             onClick={handlePay}
             className="w-full h-13 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
             disabled={isProcessing || !paymentId.trim() || !!error}
-            >
+          >
             {isProcessing ? "Processing..." : "Pay Now"}
-            </Button>
+          </Button>
         </CardContent>
-        </Card>
-
-    <QrCodeButton />
-   
-  </div>
+      </Card>
+      <div className="my-10">
+      <p className="text-center text-gray-400 mb-4">Or flash QR Code</p>
+      <div className="flex justify-center">
+      <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => setShowScanner(true)}
+                className="h-14 w-14 bg-transparent border-[#5E6164]"
+              >
+                <QrCode className="h-6 w-6 text-white" />
+              </Button>
+              </div>
+    </div>
+      {showScanner && (
+        <QrCodeScanner
+          onScanSuccess={handleScanSuccess}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+    </div>
   );
 } 

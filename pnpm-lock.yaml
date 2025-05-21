@@ -47,6 +47,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      html5-qrcode:
+        specifier: ^2.3.8
+        version: 2.3.8
       lucide-react:
         specifier: ^0.508.0
         version: 0.508.0(react@19.1.0)
@@ -73,7 +76,7 @@ importers:
         version: 3.3.0
       zustand:
         specifier: ^5.0.4
-        version: 5.0.4(@types/react@19.1.5)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+        version: 5.0.5(@types/react@19.1.5)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.5
@@ -1114,6 +1117,9 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
+  html5-qrcode@2.3.8:
+    resolution: {integrity: sha512-jsr4vafJhwoLVEDW3n1KvPnCCXWaQfRng0/EEYk1vNcQGcG/htAdhJX0be8YyqMoSz7+hZvOZSTAepsabiuhiQ==}
+
   is-arrayish@0.3.2:
     resolution: {integrity: sha512-eVRqCvVlZbuw3GrM63ovNSNAeA1K16kaR/LRY/92w0zxQ5/1YzwblUX652i4Xs9RwAGjW9d9y6X88t8OaAJfWQ==}
 
@@ -1447,8 +1453,8 @@ packages:
       react:
         optional: true
 
-  zustand@5.0.4:
-    resolution: {integrity: sha512-39VFTN5InDtMd28ZhjLyuTnlytDr9HfwO512Ai4I8ZABCoyAj4F1+sr7sD1jP/+p7k77Iko0Pb5NhgBFDCX0kQ==}
+  zustand@5.0.5:
+    resolution: {integrity: sha512-mILtRfKW9xM47hqxGIxCv12gXusoY/xTSHBYApXozR0HmQv299whhBeeAcRy+KrPPybzosvJBCOmVjq6x12fCg==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -2486,6 +2492,8 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  html5-qrcode@2.3.8: {}
+
   is-arrayish@0.3.2:
     optional: true
 
@@ -2768,7 +2776,7 @@ snapshots:
       '@types/react': 19.1.5
       react: 19.1.0
 
-  zustand@5.0.4(@types/react@19.1.5)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)):
+  zustand@5.0.5(@types/react@19.1.5)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)):
     optionalDependencies:
       '@types/react': 19.1.5
       react: 19.1.0
