@@ -309,7 +309,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   }
 
   return (
-    <Card className="bg-[#2A2A2F] border-2 border-[#39393B]">
+    <Card className="bg-[#2A2A2F] border-2 border-[#39393B] p-0">
       <CardContent className="pb-6 pt-4">
         {/* Show withdrawal-specific alerts */}
         {payment?.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') && (
@@ -329,8 +329,8 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
                 </AlertDescription>
               </Alert>
             ) : (
-              <Alert variant="default" className="bg-green-500/10 text-green-500 border-green-500/20">
-                <AlertDescription>
+              <Alert variant="default" className="bg-green-500/20 text-white border-green-500/20">
+                <AlertDescription className="text-white/50">
                   You can validate the withdrawal as the secondary address
                 </AlertDescription>
               </Alert>
@@ -409,7 +409,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
             <Button
               onClick={handleValidateWithdrawal}
               disabled={isValidating}
-              className="w-full bg-green-500 hover:bg-green-600 text-white"
+              className="w-full h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
             >
               {isValidating ? "Validating..." : "Validate Withdrawal"}
             </Button>

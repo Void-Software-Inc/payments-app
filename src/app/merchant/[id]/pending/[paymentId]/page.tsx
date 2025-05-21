@@ -10,7 +10,7 @@ export default function PendingPaymentDetailPage() {
 
   return (
     <div className="h-dvh w-dvw overflow-y-auto">
-      <div className="container mx-auto px-4 max-w-md pb-20">
+      <div className="container mx-auto px-4 max-w-md pb-24">
         <div className="flex justify-center items-center w-full mb-6 pt-5">
           <h1 className="text-2xl font-bold text-white">Payment Details</h1>
         </div>
