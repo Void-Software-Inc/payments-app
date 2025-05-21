@@ -24,7 +24,8 @@ export default function AskPaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   
   const { initPaymentClient, issuePayment, getPaymentAccount, getUserPaymentAccounts } = usePaymentClient()
-  const { resetClient } = usePaymentStore()
+  const { refreshClient } = usePaymentStore()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
@@ -62,7 +63,7 @@ export default function AskPaymentPage() {
     }
     
     initClient()
-  }, [currentAccount?.address, paymentAccountId])
+  }, [currentAccount?.address, paymentAccountId, refreshCounter])
 
   const handleGeneratePayment = async (amount: string, message: string) => {
     if (!currentAccount?.address) {
@@ -106,27 +107,14 @@ export default function AskPaymentPage() {
         tx,
         signTransaction,
         toast
-      }).catch(err => {
-        // Handle user rejection of transaction
-        if (err.message?.includes('User rejected')) {
-          toast.error("Transaction canceled by user")
-          return null
-        }
-        throw err
-      })
-      
-      if (txResult) {
-        handleTxResult(txResult, toast)
-        // Reset client and trigger refresh for pending payments
-        resetClient();
-        usePaymentStore.getState().triggerRefresh();
-        // Redirect to merchant dashboard or payment details page
-        setTimeout(() => router.push(`/merchant/${paymentAccountId}`), 1500)
-      }
+      });
+
+      handleTxResult(txResult, toast)
+      refreshClient();
+      setTimeout(() => router.push(`/merchant/${paymentAccountId}`), 1500)
       
     } catch (error: any) {
       console.error("Error generating payment:", error)
-      
       // Check for Intent not registered error
       if (error.message?.includes('Intent') && error.message?.includes('not registered')) {
         toast.error("This feature is not available for this payment account. The payment intent is not registered.")

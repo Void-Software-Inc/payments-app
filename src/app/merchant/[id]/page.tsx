@@ -11,9 +11,6 @@ import { Toaster } from "sonner"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { BalanceCard } from "@/components/BalanceCard"
 import { truncateMiddle } from "@/utils/formatters"
-import { User } from "lucide-react"
-import Link from "next/link"
-import { getCoinDecimals } from "@/utils/helpers"
 import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMerchant"
 import { PendingPayments } from "./components/PendingPayments"
 
@@ -27,7 +24,6 @@ export default function PaymentAccountPage() {
   const { getPaymentAccount } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
-  const getOrInitClient = usePaymentStore(state => state.getOrInitClient);
   const [paymentAcc, setPaymentAcc] = useState<Payment | null>(null);
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

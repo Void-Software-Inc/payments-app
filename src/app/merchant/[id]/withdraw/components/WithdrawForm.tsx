@@ -36,7 +36,7 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { resetClient } = usePaymentStore()
+  const { refreshClient } = usePaymentStore()
   
   const hasPendingWithdraws = Object.keys(pendingWithdraws).length > 0
   
@@ -84,8 +84,7 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
       });
 
       handleTxResult(result, toast);
-      resetClient();
-      usePaymentStore.getState().triggerRefresh();
+      refreshClient();
       
     } catch (error) {
       console.error("Error initiating withdraw:", error)
@@ -122,8 +121,7 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
       });
 
       handleTxResult(result, toast);
-      resetClient();
-      usePaymentStore.getState().triggerRefresh();
+      refreshClient();
 
     } catch (error) {
       console.error("Error completing withdraw:", error)

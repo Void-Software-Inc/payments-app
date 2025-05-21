@@ -19,7 +19,7 @@ export function CreatePaymentForm() {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  const { triggerRefresh, resetClient } = usePaymentStore()
+  const { refreshClient } = usePaymentStore()
   const { createPaymentAccount, getUser } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
@@ -89,9 +89,8 @@ export function CreatePaymentForm() {
 
       handleTxResult(txResult, toast)
       
-      // Reset the client and trigger refresh
-      resetClient()
-      triggerRefresh()
+      // Reset the client
+      refreshClient()
       
       router.push("/merchant")
       

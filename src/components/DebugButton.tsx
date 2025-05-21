@@ -3,15 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { usePaymentStore } from "@/store/usePaymentStore";
 import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
-import { usePaymentClient } from "@/hooks/usePaymentClient";
 import { useEffect, useState } from "react";
 
 export function DebugButton() {
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
-  const { client, currentAddress } = usePaymentStore();
+  const { client } = usePaymentStore();
   const [walletObjects, setWalletObjects] = useState<any[]>([]);
-  const { getOrInitClient } = usePaymentStore();
 
   // Add useEffect for initial fetch
   useEffect(() => {
@@ -19,12 +17,8 @@ export function DebugButton() {
       if (!currentAccount) return;
 
       try {
-        const objects = await suiClient.getOwnedObjects({
+        const objects = await suiClient.getAllCoins({
           owner: currentAccount.address,
-          options: {
-            showContent: true,
-            showType: true,
-          }
         });
         setWalletObjects(objects.data);
       } catch (error) {
@@ -36,16 +30,9 @@ export function DebugButton() {
   }, [currentAccount, suiClient]);
 
   const handleDebugClick = async () => {
-    getOrInitClient(currentAccount!.address);
     console.log('=== Debug Information ===');
-    console.log('Current Account:', currentAccount?.address);
-    console.log('Store State:', {
-      currentAddress,
-      hasClient: !!client,
-    });
+    console.log(walletObjects);
     console.log('Full Client:', client);
-
-  
     console.log('=====================');
   };
 

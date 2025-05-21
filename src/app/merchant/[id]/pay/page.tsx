@@ -69,30 +69,14 @@ export default function MerchantPayPage() {
   const merchantId = params.id as string
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { initPaymentClient, makePayment, getIntent } = usePaymentClient()
-  const { resetClient } = usePaymentStore()
+  const { makePayment, getIntent } = usePaymentClient()
+  const { refreshClient } = usePaymentStore()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   const [pageError, setPageError] = useState<string | null>(null)
 
-  // Initialize client 
-  useEffect(() => {
-    if (!currentAccount?.address) return
-    
-    const initClient = async () => {
-      try {
-        // Initialize client with user's address
-        await initPaymentClient(currentAccount.address)
-      } catch (error) {
-        console.error("Error initializing payment client:", error)
-        setPageError("Could not initialize payment client. Please try again.")
-      }
-    }
-    
-    initClient()
-  }, [currentAccount?.address, initPaymentClient])
-
+  
   const handleMakePayment = async (paymentId: string, tip: bigint = BigInt(0)) => {
     if (!currentAccount?.address) {
       toast.error("Please connect your wallet first")
@@ -238,7 +222,7 @@ export default function MerchantPayPage() {
         }
         
         // Reset client and redirect
-        resetClient();
+        refreshClient();
         setTimeout(() => router.push(`/merchant/${merchantId}`), 1500)
       }
       

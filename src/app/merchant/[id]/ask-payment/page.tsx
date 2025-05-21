@@ -23,7 +23,8 @@ export default function AskPaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   
   const { initPaymentClient, issuePayment, getPaymentAccount, getUserPaymentAccounts } = usePaymentClient()
-  const { resetClient } = usePaymentStore()
+  const { refreshClient } = usePaymentStore()
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
@@ -61,7 +62,7 @@ export default function AskPaymentPage() {
     }
     
     initClient()
-  }, [currentAccount?.address, paymentAccountId])
+  }, [currentAccount?.address, paymentAccountId, refreshCounter])
 
   const handleGeneratePayment = async (amount: string, message: string) => {
     if (!currentAccount?.address) {
@@ -145,9 +146,8 @@ export default function AskPaymentPage() {
           }
         }
         
-        // Reset client and trigger refresh for pending payments
-        resetClient();
-        usePaymentStore.getState().triggerRefresh();
+        // Reset client
+        refreshClient();
         // Redirect to pending payments page
         setTimeout(() => router.push(`/merchant/${paymentAccountId}/pending`), 1500)
       }

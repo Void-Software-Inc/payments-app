@@ -23,7 +23,8 @@ export default function ChangeShopNamePage() {
   const suiClient = useSuiClient();
   const signTransaction = useSignTransaction();
   const { modifyName, getPaymentAccount } = usePaymentClient();
-  const { triggerRefresh, resetClient } = usePaymentStore();
+  const { refreshClient} = usePaymentStore();
+  const refreshCounter = usePaymentStore(state => state.refreshCounter);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const [currentName, setCurrentName] = useState("");
@@ -60,7 +61,7 @@ export default function ChangeShopNamePage() {
     };
 
     fetchPaymentAccount();
-  }, [currentAccount?.address, merchantId]);
+  }, [currentAccount?.address, merchantId, refreshCounter]);
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,9 +109,8 @@ export default function ChangeShopNamePage() {
       if (result.effects?.status?.status === "success") {
         setCurrentName(newName);
         
-        // Trigger refresh and reset client before navigation
-        resetClient();
-        triggerRefresh();
+        // Reset client
+        refreshClient();
         
         // Navigate immediately
         router.push(`/merchant/${merchantId}/profile`);
