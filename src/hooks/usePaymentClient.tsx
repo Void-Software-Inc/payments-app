@@ -577,14 +577,14 @@ export function usePaymentClient() {
     }
   };
 
-  const getWithdrawIntentAmounts = async (userAddr: string, accountId: string): Promise<Record<string, string>> => {
+  const getWithdrawIntentAmounts = async (userAddr: string, accountId: string): Promise<{ id: string, amount: string }> => {
     try {
       const client = await getOrInitClient(userAddr, accountId);
       const account = client.paymentAccount as ExtendedPayment;
       const ownedObjects = client.ownedObjects as unknown as OwnedObjects;
       
       if (!ownedObjects?.coins) {
-        return {};
+        return { id: '', amount: '0' };
       }
 
       // Find USDC coin type
@@ -593,11 +593,10 @@ export function usePaymentClient() {
       );
 
       if (!usdcCoinEntry) {
-        return {};
+        return { id: '', amount: '0' };
       }
 
       const [usdcCoinId, usdcCoin] = usdcCoinEntry;
-      const amounts: Record<string, string> = {};
 
       // Get instances from USDC coin
       if (usdcCoin.instances && Array.isArray(usdcCoin.instances)) {
@@ -611,16 +610,19 @@ export function usePaymentClient() {
           if (account.lockedObjects && account.lockedObjects.includes(objectId)) {
             // Get the amount from the instance
             if (instance.amount) {
-              amounts[objectId] = instance.amount.toString();
+              return {
+                id: objectId,
+                amount: instance.amount.toString()
+              };
             }
           }
         }
       }
 
-      return amounts;
+      return { id: '', amount: '0' };
     } catch (error) {
       console.error("Error getting withdraw intent amounts:", error);
-      return {};
+      return { id: '', amount: '0' };
     }
   };
 

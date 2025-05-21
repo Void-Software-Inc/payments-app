@@ -49,7 +49,6 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
       try {
         // Get payment account
         const account = await getPaymentAccount(currentAccount.address, accountId);
-        console.log("Payment Account:", account);
         
         // Get coins for the account
         const coins = await suiClient.getCoins({
@@ -57,12 +56,10 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
           coinType: USDC_COIN_TYPE
         });
         
-        console.log("Account USDC Coins:", coins);
         
         // Calculate total balance
         const total = coins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
         setAccountBalance(total);
-        console.log("Total USDC Balance:", total.toString());
         
         // Also check SUI balance for gas
         const suiCoins = await suiClient.getCoins({
@@ -71,7 +68,6 @@ export function WithdrawForm({ accountId, isOwner, isBackup, pendingWithdraws }:
         });
         
         const totalSui = suiCoins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
-        console.log("User SUI Balance for gas:", totalSui.toString());
         
       } catch (error) {
         console.error("Error fetching account balance:", error);

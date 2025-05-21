@@ -23,13 +23,17 @@ interface IntentData {
     recipient?: string;
     [key: string]: any;
   };
+  withdrawAmount?: {
+    id: string;
+    amount: string;
+  };
 }
 
 export function WithdrawIntents({ merchantId }: WithdrawIntentsProps) {
   const [allIntents, setAllIntents] = useState<IntentData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const currentAccount = useCurrentAccount()
-  const { getIntents } = usePaymentClient()
+  const { getIntents, getWithdrawIntentAmounts } = usePaymentClient()
 
   useEffect(() => {
     const fetchIntents = async () => {
@@ -39,27 +43,32 @@ export function WithdrawIntents({ merchantId }: WithdrawIntentsProps) {
         setIsLoading(true)
         const intents = await getIntents(currentAccount.address, merchantId)
         
-        // Map all intents without filtering
-        const intentsList = Object.entries(intents || {})
-          .map(([key, intent]: [string, any]) => {
-            return {
-              key,
-              intent: intent.intent,
-              fields: intent.fields,
-              args: intent.args
-            } as IntentData;
-          })
-          .sort((a, b) => {
-            // Sort by timestamp (newest first)
-            const timeA = a.fields?.creationTime ? Number(a.fields.creationTime) : 0
-            const timeB = b.fields?.creationTime ? Number(b.fields.creationTime) : 0
-            return timeB - timeA
-          })
+        // Map all intents and fetch withdraw amounts
+        const intentsList = await Promise.all(
+          Object.entries(intents || {})
+            .map(async ([key, intent]: [string, any]) => {
+              // Fetch withdraw amount for each intent
+              const withdrawAmount = await getWithdrawIntentAmounts(currentAccount.address, merchantId)
+              
+              return {
+                key,
+                intent: intent.intent,
+                fields: intent.fields,
+                args: intent.args,
+                withdrawAmount
+              } as IntentData;
+            })
+        );
+
+        // Sort by timestamp (newest first)
+        const sortedIntents = intentsList.sort((a, b) => {
+          const timeA = a.fields?.creationTime ? Number(a.fields.creationTime) : 0
+          const timeB = b.fields?.creationTime ? Number(b.fields.creationTime) : 0
+          return timeB - timeA
+        });
         
-        setAllIntents(intentsList)
+        setAllIntents(sortedIntents)
         
-        // Log to console for debugging
-        console.log("All intents:", intentsList)
       } catch (error) {
         console.error("Error fetching intents:", error)
       } finally {
@@ -118,9 +127,10 @@ export function WithdrawIntents({ merchantId }: WithdrawIntentsProps) {
               <div key={intent.key} className="p-3 border border-gray-700 rounded-lg">
                 <div className="flex justify-between">
                   <div>
-                    <p className="text-white font-medium">Type: {intent.intent}</p>
-                    {intent.args?.amount && (
-                      <p className="text-white">{formatAmount(intent.args.amount)}</p>
+                    {intent.withdrawAmount && (
+                      <p className="text-white">
+                        {formatAmount(intent.withdrawAmount.amount)}
+                      </p>
                     )}
                     {intent.args?.recipient && (
                       <p className="text-xs text-gray-400">
