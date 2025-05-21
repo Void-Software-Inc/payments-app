@@ -10,6 +10,8 @@ import { useCurrentAccount, useSignTransaction } from "@mysten/dapp-kit"
 import { useSuiClient } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
 import { toast } from "sonner"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 import ToastNotification from "@/utils/Notification"
 import { handleTxResult, signAndExecute } from "@/utils/Tx"
@@ -25,8 +27,14 @@ interface WithdrawFormProps {
   isOwner: boolean
 }
 
+interface BalanceInfo {
+  total: bigint;
+  locked: bigint;
+  available: bigint;
+}
+
 export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
-  const { initiateWithdraw, completeWithdraw, getPaymentAccount } = usePaymentClient()
+  const { initiateWithdraw, getPaymentAccount, getLockedObjectsId, getCoinInstances } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
   const signTransaction = useSignTransaction()
@@ -36,43 +44,99 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { refreshClient } = usePaymentStore()
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
-  const [accountBalance, setAccountBalance] = useState<bigint>(BigInt(0))
+  const [balanceInfo, setBalanceInfo] = useState<BalanceInfo>({
+    total: BigInt(0),
+    locked: BigInt(0),
+    available: BigInt(0)
+  })
+  const [amountError, setAmountError] = useState<string | null>(null);
   
-  // Fetch account balance for debugging
+  // Fetch account balance information
   useEffect(() => {
-    const fetchAccountBalance = async () => {
+    const fetchBalanceInfo = async () => {
       if (!currentAccount?.address || !accountId) return;
       
       try {
         // Get payment account
         await getPaymentAccount(currentAccount.address, accountId);
         
-        // Get coins for the account
-        const coins = await suiClient.getCoins({
-          owner: accountId,
-          coinType: USDC_COIN_TYPE
+        // Get all USDC coin instances
+        const coinInstances = await getCoinInstances(
+          currentAccount.address,
+          accountId,
+          USDC_COIN_TYPE
+        );
+        
+        // Get locked objects
+        const lockedObjects = await getLockedObjectsId(
+          currentAccount.address,
+          accountId
+        );
+        
+        // Calculate total and locked balances
+        let totalBalance = BigInt(0);
+        let lockedBalance = BigInt(0);
+        
+        // Sum up all coin instances
+        coinInstances.forEach(coin => {
+          const amount = BigInt(coin.amount);
+          totalBalance += amount;
+          
+          // If this coin is locked, add to locked balance
+          if (lockedObjects.includes(coin.objectId)) {
+            lockedBalance += amount;
+          }
         });
         
-        // Calculate total balance
-        const total = coins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
-        setAccountBalance(total);
+        // Calculate available balance
+        const availableBalance = totalBalance - lockedBalance;
         
-        // Also check SUI balance for gas
-        const suiCoins = await suiClient.getCoins({
-          owner: currentAccount.address,
-          coinType: "0x2::sui::SUI"
+        setBalanceInfo({
+          total: totalBalance,
+          locked: lockedBalance,
+          available: availableBalance
         });
-        
-        const totalSui = suiCoins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
         
       } catch (error) {
-        console.error("Error fetching account balance:", error);
+        console.error("Error fetching balance information:", error);
       }
     };
     
-    fetchAccountBalance();
+    fetchBalanceInfo();
   }, [currentAccount, accountId, suiClient, refreshCounter]);
   
+  // Add validation function
+  const validateAmount = (value: string) => {
+    if (!value) {
+      setAmountError(null);
+      return;
+    }
+
+    try {
+      const amountBigInt = BigInt(parseFloat(value) * 1_000_000);
+      if (amountBigInt <= BigInt(0)) {
+        setAmountError("Amount must be greater than 0");
+        return;
+      }
+      
+      if (amountBigInt > balanceInfo.available) {
+        setAmountError(`Amount exceeds available balance (${formatUSDC(balanceInfo.available)} USDC)`);
+        return;
+      }
+
+      setAmountError(null);
+    } catch (error) {
+      setAmountError("Invalid amount");
+    }
+  };
+
+  // Update amount change handler
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAmount(value);
+    validateAmount(value);
+  };
+
   const handleInitiateWithdraw = async () => {
     if (!currentAccount?.address || !amount || !recipient) return
     
@@ -85,15 +149,15 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
       console.log("Withdraw Request:", {
         amount: amountBigInt.toString(),
         formattedAmount: parseFloat(amount),
-        accountBalance: accountBalance.toString(),
+        availableBalance: balanceInfo.available.toString(),
         recipient,
         accountId,
         gasAmount: GAS_BUDGET.toString()
       });
       
       // Verify sufficient balance
-      if (amountBigInt > accountBalance) {
-        toast.error(`Insufficient balance. Available: ${Number(accountBalance) / 1_000_000} USDC`);
+      if (amountBigInt > balanceInfo.available) {
+        toast.error(`Insufficient available balance. Available: ${formatUSDC(balanceInfo.available)} USDC`);
         setIsSubmitting(false);
         return;
       }
@@ -116,15 +180,6 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
           recipient
         );
         
-        console.log("Transaction Built:", {
-          userAddress: currentAccount.address,
-          accountId,
-          key,
-          coinType: USDC_COIN_TYPE,
-          amount: amountBigInt.toString(),
-          recipient
-        });
-
         // Execute transaction
         const txResult = await signAndExecute({
           suiClient,
@@ -143,7 +198,6 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
         });
         
         if (txResult) {
-          console.log("Transaction Result:", txResult);
           handleTxResult(txResult, toast);
           
           // Clear form and reset client
@@ -160,20 +214,18 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
       }
     } catch (error) {
       console.error("Error initiating withdraw:", error);
-      console.error("Failed to initiate withdrawal: " + ((error as Error).message || String(error)));
       toast.error("Failed to initiate withdrawal: " + ((error as Error).message || String(error)));
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  // Display current USDC balance above the form
-  const displayBalance = () => {
-    const formatted = (Number(accountBalance) / 1_000_000).toLocaleString(undefined, {
+  // Helper function to format USDC amounts
+  const formatUSDC = (amount: bigint): string => {
+    return (Number(amount) / 1_000_000).toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 6
     });
-    return `${formatted} USDC`;
   };
   
   // If user is owner, show form to initiate withdraw
@@ -183,9 +235,19 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
         <CardContent className="pt-6">
           <h2 className="text-xl font-semibold text-white mb-4">Initiate Withdrawal</h2>
           
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-gray-400">Available balance:</span>
-            <span className="text-sm font-medium text-white">{displayBalance()}</span>
+          <div className="space-y-2 mb-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Total balance:</span>
+              <span className="text-sm font-medium text-white">{formatUSDC(balanceInfo.total)} USDC</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Locked in withdrawals:</span>
+              <span className="text-sm font-medium text-orange-400">{formatUSDC(balanceInfo.locked)} USDC</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Available balance:</span>
+              <span className="text-sm font-medium text-green-400">{formatUSDC(balanceInfo.available)} USDC</span>
+            </div>
           </div>
           
           <div className="space-y-4">
@@ -195,11 +257,20 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
                 id="amount"
                 placeholder="0.00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={handleAmountChange}
                 type="number"
                 min="0"
                 step="0.000001"
+                className={amountError ? "border-red-500" : ""}
               />
+              {amountError && (
+                <Alert variant="destructive" className="bg-red-900/50 border-red-500/50 text-red-200">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {amountError}
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -214,8 +285,8 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
             
             <Button 
               onClick={handleInitiateWithdraw}
-              disabled={!amount || !recipient || isSubmitting}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={!amount || !recipient || isSubmitting || !!amountError}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600"
             >
               {isSubmitting ? "Processing..." : "Initiate Withdraw"}
             </Button>
@@ -224,4 +295,6 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
       </Card>
     )
   }
+  
+  return null;
 } 
