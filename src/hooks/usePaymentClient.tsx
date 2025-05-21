@@ -500,6 +500,39 @@ export function usePaymentClient() {
     }
   };
 
+  const initiateWithdraw = async (
+    userAddr: string,
+    accountId: string,
+    tx: Transaction,
+    key: string,
+    coinType: string,
+    amount: bigint,
+    recipient: string
+  ) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      client.initiateWithdraw(tx, key, coinType, amount, recipient);
+    } catch (error) {
+      console.error("Error initiating withdraw:", error);
+      throw error;
+    }
+  };
+
+  const completeWithdraw = async (
+    userAddr: string,
+    accountId: string,
+    tx: Transaction,
+    key: string
+  ) => {
+    try {
+      const client = await getOrInitClient(userAddr, accountId);
+      client.completeWithdraw(tx, key);
+    } catch (error) {
+      console.error("Error completing withdraw:", error);
+      throw error;
+    }
+  };
+
   return {
     initPaymentClient,
     refresh,
@@ -519,6 +552,8 @@ export function usePaymentClient() {
     getIntentStatus,
     getDepsStatus,
     updateVerifiedDeps,
-    setRecoveryAddress
+    setRecoveryAddress,
+    initiateWithdraw,
+    completeWithdraw
   };
 }

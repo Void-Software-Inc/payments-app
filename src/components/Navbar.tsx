@@ -87,6 +87,12 @@ export function Navbar() {
       return;
     }
     
+    // If on merchant recovery page, go to merchant profile page
+    if (merchantId && pathname === `/merchant/${merchantId}/profile/recovery`) {
+      router.push(`/merchant/${merchantId}/profile`);
+      return;
+    }
+    
     // If on merchant QR code page, go to merchant profile page
     if (isMerchantQRCodePage && merchantId) {
       router.push(`/merchant/${merchantId}/profile`);
