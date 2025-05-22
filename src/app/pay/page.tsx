@@ -9,6 +9,7 @@ import { signAndExecute, handleTxResult } from "@/utils/Tx"
 import { toast } from "sonner"
 import { useState } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
+import { useIntentStore } from "@/store/useIntentStore"
 import { Button } from "@/components/ui/button"
 import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
 import { PayCard } from "./components/PayCard"
@@ -23,6 +24,7 @@ export default function PayPage() {
   
   const { makePayment, getIntent } = usePaymentClient()
   const { refreshClient } = usePaymentStore()
+  const { addDeletedIntent } = useIntentStore()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
@@ -54,7 +56,6 @@ export default function PayPage() {
       console.log(`Attempting to retrieve intent for payment ID: ${sanitizedPaymentId}`);
       
       // Get the intent details BEFORE processing the payment with retry logic
-      // This is critical because after the payment is processed, the intent may be removed
       let intentDetails = null;
       let retryCount = 0;
       const maxRetries = 2;
@@ -134,6 +135,13 @@ export default function PayPage() {
       })
       
       handleTxResult(txResult, toast);
+
+      // Store the intent before refreshing client
+      if (intentDetails) {
+        console.log("Storing intent before refresh:", sanitizedPaymentId);
+        addDeletedIntent(intentDetails, sanitizedPaymentId);
+      }
+      
       refreshClient();
       router.push('/');
       
