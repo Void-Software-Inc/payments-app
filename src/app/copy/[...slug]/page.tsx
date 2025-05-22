@@ -3,14 +3,9 @@
 import { useState, useEffect } from "react"
 import { Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Metadata } from "next"
 
 // This page is intentionally public and does not require authentication
 // It's designed to be accessible when scanning a QR code without wallet connection
-export const metadata: Metadata = {
-  title: 'Copy Payment ID | Drift',
-  description: 'Copy a payment ID to your clipboard',
-}
 
 export default function CopyPage({ params }: { params: { slug: string[] } }) {
   const [copied, setCopied] = useState(false)
