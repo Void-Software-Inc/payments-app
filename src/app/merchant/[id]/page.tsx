@@ -13,6 +13,7 @@ import { ActionButtonsMerchant } from "@/app/merchant/components/ActionButtonsMe
 import { PendingPayments } from "./components/PendingPayments"
 import { usePaymentStore } from "@/store/usePaymentStore";
 import { Store, AlertCircle } from "lucide-react"
+import { CompletedPayments } from "./components/CompletedPayments";
 
 // Define constants for coin types
 const SUI_COIN_TYPE = "0x2::sui::SUI";
@@ -172,6 +173,7 @@ export default function PaymentAccountPage() {
             {/* Pending Payments Section */}
             <div className="mb-10 flex flex-col gap-4">
               <PendingPayments merchantId={accountId} limit={2} />
+              <CompletedPayments merchantId={accountId} limit={2} />
             </div>
           </div>
         </div>
