@@ -148,10 +148,16 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
 
   const copyToClipboard = () => {
     if (payment?.rawIntent?.fields?.key) {
-      navigator.clipboard.writeText(payment.rawIntent.fields.key)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 3000)
+      const paymentLink = `${merchantId}/${payment.rawIntent.fields.key}`;
+      navigator.clipboard.writeText(paymentLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
     }
+  }
+
+  const getTruncatedLink = (key: string) => {
+    if (key.length <= 20) return key;
+    return `${key.slice(0, 10)}...${key.slice(-10)}`;
   }
 
   const handleDelete = async () => {
@@ -372,10 +378,11 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         {!payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') && (
           <>
             <div className="flex items-center justify-between mb-1">
-              <p className="text-md text-gray-400">Your Link</p>
+              <p className="text-md text-gray-400">Your Payment Link</p>
               <button 
                 onClick={copyToClipboard}
                 className="p-1 rounded-full hover:bg-gray-700 text-[#78BCDB] relative flex-shrink-0"
+                title="Copy full link"
               >
                 {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
                 {copied && (
@@ -386,7 +393,9 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
               </button>
             </div>
             <p className="text-[#78BCDB] font-mono text-sm break-all mb-6">
-              {payment.rawIntent?.fields?.key || "No key available"}
+              {payment.rawIntent?.fields?.key 
+                ? `${merchantId.slice(0, 6)}.../${getTruncatedLink(payment.rawIntent.fields.key)}`
+                : "No key available"}
             </p>
             
             <p className="text-md text-gray-400 mb-4">QR Code</p>

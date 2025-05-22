@@ -36,10 +36,12 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   const [showScanner, setShowScanner] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<string | null>(null);
   const [paymentDescription, setPaymentDescription] = useState<string | null>(null);
+  const [isValidatingPayment, setIsValidatingPayment] = useState(false);
+  const [isPaymentValidated, setIsPaymentValidated] = useState(false);
   
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
-  const { getIntent } = usePaymentClient();
+  const { getForeignIntent } = usePaymentClient();
   
   // Fetch balances when the component loads
   useEffect(() => {
@@ -82,7 +84,8 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
     setPaymentId(e.target.value);
     // Clear error when user types
     if (error) setError(null);
-    // Clear payment amount when ID changes
+    // Reset validation state when ID changes
+    setIsPaymentValidated(false);
     setPaymentAmount(null);
     setPaymentDescription(null);
   };
@@ -93,16 +96,6 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setTipAmount(value);
     }
-  };
-  
-  const adjustTip = (increment: boolean) => {
-    let currentTip = parseFloat(tipAmount) || 0;
-    if (increment) {
-      currentTip += 1;
-    } else {
-      currentTip = Math.max(0, currentTip - 1);
-    }
-    setTipAmount(currentTip.toString());
   };
   
   const calculateTipPercentage = (percentage: number) => {
@@ -124,30 +117,88 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
       maximumFractionDigits: 2
     });
   };
+
+  const validatePaymentId = async () => {
+    if (!currentAccount?.address || !paymentId.trim()) {
+      setError("Please enter a payment ID");
+      return;
+    }
+
+    setIsValidatingPayment(true);
+    setError(null);
+
+    try {
+      // Extract accountId and intentId from the link format
+      let actualPaymentId = paymentId.trim();
+      let accountId: string | null = null;
+      let intentId: string | null = null;
+      
+      // Parse the link format (accountId/intentId)
+      if (actualPaymentId.includes('/')) {
+        const parts = actualPaymentId.split('/');
+        if (parts.length >= 2) {
+          accountId = parts[0].trim();
+          intentId = parts[1].trim();
+          
+          // Handle any additional query parameters
+          if (intentId.includes('?')) {
+            intentId = intentId.split('?')[0].trim();
+          }
+        }
+      }
+
+      // Validate we have both required parts
+      if (!accountId || !intentId) {
+        setError("Invalid payment link format. Expected: accountId/paymentId");
+        return;
+      }
+      
+      // Add a small delay for mobile devices
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const intentDetails = await getForeignIntent(currentAccount.address, accountId, intentId);
+      
+      if (intentDetails) {
+        // Get amount from intent - handle different intent structure formats
+        const intentFields = intentDetails.fields || {};
+        const intentArgs = intentDetails.args || {};
+        
+        // Try multiple possible paths to find the amount
+        const amount = 
+          (intentArgs as any)?.amount?.toString() || 
+          (intentFields as any)?.amount?.toString() || 
+          ((intentDetails as any)?.args?.amount?.toString()) || 
+          ((intentDetails as any)?.fields?.amount?.toString()) || 
+          '0';
+        
+        // Format amount (assuming 6 decimals for USDC)
+        const amountNumber = Number(amount) / 1_000_000;
+        setPaymentAmount(amountNumber.toFixed(2));
+        
+        // Get description - also try multiple paths
+        const description = 
+          (intentFields as any)?.description || 
+          (intentArgs as any)?.description || 
+          ((intentDetails as any)?.fields?.description) || 
+          ((intentDetails as any)?.args?.description) || 
+          null;
+          
+        setPaymentDescription(description);
+        setIsPaymentValidated(true);
+      } else {
+        setError("Payment intent not found. Please check the link and try again.");
+      }
+    } catch (error) {
+      console.error("Error validating payment:", error);
+      setError("Failed to validate payment. Please try again.");
+    } finally {
+      setIsValidatingPayment(false);
+    }
+  };
   
   const handlePay = async () => {
     if (!currentAccount?.address) {
       setError("Please connect your wallet");
-      return;
-    }
-    
-    if (!paymentId.trim()) {
-      setError("Please enter a payment ID");
-      return;
-    }
-    
-    // Extract payment ID from link if it's a link format
-    let actualPaymentId = paymentId.trim();
-    
-    // Check if it's a link format and extract the ID
-    if (actualPaymentId.includes('/')) {
-      const parts = actualPaymentId.split('/');
-      actualPaymentId = parts[parts.length - 1].trim();
-    }
-    
-    // Ensure we're not trying to pay with an empty ID
-    if (!actualPaymentId) {
-      setError("Invalid payment ID");
       return;
     }
     
@@ -163,12 +214,27 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
       const tipValue = parseFloat(tipAmount) || 0;
       const tipInSmallestUnit = BigInt(Math.floor(tipValue * 1_000_000));
       
+      // Extract intentId from the payment link
+      let actualPaymentId = paymentId.trim();
+      if (actualPaymentId.includes('/')) {
+        const parts = actualPaymentId.split('/');
+        if (parts.length >= 2) {
+          actualPaymentId = parts[1].trim();
+          if (actualPaymentId.includes('?')) {
+            actualPaymentId = actualPaymentId.split('?')[0].trim();
+          }
+        }
+      }
+      
       // Call the onMakePayment function with the payment ID and tip amount
       await onMakePayment(actualPaymentId, tipInSmallestUnit);
       
-      // Reset payment ID and tip after successful payment
+      // Reset form after successful payment
       setPaymentId("");
       setTipAmount("0");
+      setIsPaymentValidated(false);
+      setPaymentAmount(null);
+      setPaymentDescription(null);
     } catch (error: any) {
       console.error("Payment error:", error);
       setError(error.message || "Failed to process payment");
@@ -179,91 +245,12 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
     // Ensure payment ID is properly trimmed when coming from QR scanner
     setPaymentId(scannedPaymentId.trim());
     if (error) setError(null);
+    setIsPaymentValidated(false);
   };
   
   // Format balances for display
   const formattedSuiBalance = formatSuiBalance(balanceInSui);
   const formattedUsdcBalance = formatUsdcBalance(balanceInUsdc, usdcDecimals);
-  
-  // Fetch payment details when payment ID changes
-  useEffect(() => {
-    const fetchPaymentDetails = async () => {
-      if (!currentAccount?.address || !paymentId.trim()) {
-        return;
-      }
-
-      try {
-        // Extract payment ID from link if it's a link format
-        let actualPaymentId = paymentId.trim();
-        
-        // Handle various formats of payment IDs that might come from QR codes or links
-        if (actualPaymentId.includes('/')) {
-          const parts = actualPaymentId.split('/');
-          actualPaymentId = parts[parts.length - 1].trim();
-        }
-        
-        // Also handle URLs with query parameters
-        if (actualPaymentId.includes('?')) {
-          actualPaymentId = actualPaymentId.split('?')[0].trim();
-        }
-
-        // Ensure we're not trying to look up an empty string
-        if (!actualPaymentId) {
-          console.warn("Empty payment ID after processing");
-          return;
-        }
-        
-        // Add a small delay for mobile devices
-        // This helps with timing issues in the nightly app
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        console.log(`Attempting to fetch intent details for ID: ${actualPaymentId}`);
-        const intentDetails = await getIntent(currentAccount.address, actualPaymentId);
-        
-        if (intentDetails) {
-          console.log("Successfully retrieved intent details");
-          // Get amount from intent - handle different intent structure formats
-          const intentFields = intentDetails.fields || {};
-          const intentArgs = intentDetails.args || {};
-          
-          // Try multiple possible paths to find the amount
-          const amount = 
-            (intentArgs as any)?.amount?.toString() || 
-            (intentFields as any)?.amount?.toString() || 
-            ((intentDetails as any)?.args?.amount?.toString()) || 
-            ((intentDetails as any)?.fields?.amount?.toString()) || 
-            '0';
-          
-          // Format amount (assuming 6 decimals for USDC)
-          const amountNumber = Number(amount) / 1_000_000;
-          setPaymentAmount(amountNumber.toFixed(2));
-          
-          // Get description - also try multiple paths
-          const description = 
-            (intentFields as any)?.description || 
-            (intentArgs as any)?.description || 
-            ((intentDetails as any)?.fields?.description) || 
-            ((intentDetails as any)?.args?.description) || 
-            null;
-            
-          setPaymentDescription(description);
-        } else {
-          console.error("Intent details not found for ID:", actualPaymentId);
-          setPaymentAmount(null);
-          setPaymentDescription(null);
-          setError("Payment intent not found. Please check the ID and try again.");
-        }
-      } catch (error) {
-        console.error("Error fetching payment details:", error);
-        // Reset payment amount and description when intent not found
-        setPaymentAmount(null);
-        setPaymentDescription(null);
-        setError("Failed to retrieve payment details. Please try again.");
-      }
-    };
-
-    fetchPaymentDetails();
-  }, [currentAccount?.address, paymentId, getIntent]);
   
   return (
     <div className="pb-24">
@@ -286,115 +273,135 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
               />
             </div>
           </div>
-          
-          {/* Payment Amount Display */}
-          {paymentAmount && (
-            <div className="space-y-2 mt-2">
-              <Label className="text-md text-[#c8c8c8] font-medium">
-                Amount to Pay
-              </Label>
-              <div className="flex items-center justify-between p-4 bg-[#1F1F23] rounded-lg">
-                <span className="text-xl font-semibold text-white">${paymentAmount} USDC</span>
-              </div>
-              {paymentDescription && (
-                <p className="text-sm text-[#c8c8c8] mt-2">{paymentDescription}</p>
-              )}
-            </div>
+
+          {/* Confirm Button */}
+          {!isPaymentValidated && (
+            <Button
+              onClick={validatePaymentId}
+              className="w-full h-13 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
+              disabled={isValidatingPayment || !paymentId.trim()}
+            >
+              {isValidatingPayment ? "Validating..." : "Confirm"}
+            </Button>
           )}
           
-          {/* Tip Amount Input */}
-          <div className="space-y-2 mt-2">
-            <Label htmlFor="tipAmount" className="text-md text-[#c8c8c8] font-medium">
-              Add tip (optional)
-            </Label>
-            <div className="relative">
-              <Input
-                id="tipAmount"
-                value={tipAmount}
-                onChange={handleTipChange}
-                placeholder="0.00"
-                className="h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg pr-20"
-                autoComplete="off"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-                <div className="w-4 h-4 relative">
-                  <Image
-                    src="/usdc-logo.webp"
-                    alt="USDC"
-                    fill
-                    sizes="16px"
-                    className="object-contain rounded-full"
-                  />
+          {/* Payment Details (only shown after validation) */}
+          {isPaymentValidated && (
+            <>
+              {/* Payment Amount Display */}
+              {paymentAmount && (
+                <div className="space-y-2 mt-2">
+                  <Label className="text-md text-[#c8c8c8] font-medium">
+                    Amount to Pay
+                  </Label>
+                  <div className="flex items-center justify-between p-4 bg-[#1F1F23] rounded-lg">
+                    <span className="text-xl font-semibold text-white">${paymentAmount} USDC</span>
+                  </div>
+                  {paymentDescription && (
+                    <p className="text-sm text-[#c8c8c8] mt-2">{paymentDescription}</p>
+                  )}
                 </div>
-                <span className="text-white text-sm ml-1">USDC</span>
+              )}
+              
+              {/* Tip Amount Input */}
+              <div className="space-y-2 mt-2">
+                <Label htmlFor="tipAmount" className="text-md text-[#c8c8c8] font-medium">
+                  Add tip (optional)
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="tipAmount"
+                    value={tipAmount}
+                    onChange={handleTipChange}
+                    placeholder="0.00"
+                    className="h-14 bg-transparent border-[#5E6164] rounded-lg text-white text-lg pr-20"
+                    autoComplete="off"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                    <div className="w-4 h-4 relative">
+                      <Image
+                        src="/usdc-logo.webp"
+                        alt="USDC"
+                        fill
+                        sizes="16px"
+                        className="object-contain rounded-full"
+                      />
+                    </div>
+                    <span className="text-white text-sm ml-1">USDC</span>
+                  </div>
+                </div>
+                <div className="flex justify-between gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => calculateTipPercentage(5)}
+                    className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+                  >
+                    5%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => calculateTipPercentage(10)}
+                    className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+                  >
+                    10%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => calculateTipPercentage(15)}
+                    className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+                  >
+                    15%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => calculateTipPercentage(20)}
+                    className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+                  >
+                    20%
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="flex justify-between gap-2 mt-2">
+              
+              {/* Pay Button */}
               <Button
-                type="button"
-                variant="outline"
-                onClick={() => calculateTipPercentage(5)}
-                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
+                onClick={handlePay}
+                className="w-full h-13 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
+                disabled={isProcessing || !!error}
               >
-                5%
+                {isProcessing ? "Processing..." : "Pay Now"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => calculateTipPercentage(10)}
-                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
-              >
-                10%
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => calculateTipPercentage(15)}
-                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
-              >
-                15%
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => calculateTipPercentage(20)}
-                className="flex-1 h-10 bg-transparent border-[#5E6164] text-white hover:bg-[#3A3A3F]"
-              >
-                20%
-              </Button>
-            </div>
-          </div>
+            </>
+          )}
           
           {error && (
             <div className="text-amber-500 text-sm mt-2 flex items-center">
               {error}
             </div>
           )}
-          
-          {/* Pay Button */}
-          <Button
-            onClick={handlePay}
-            className="w-full h-13 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
-            disabled={isProcessing || !paymentId.trim() || !!error}
-          >
-            {isProcessing ? "Processing..." : "Pay Now"}
-          </Button>
         </CardContent>
       </Card>
+
+      {/* QR Code Section */}
       <div className="my-10">
-      <p className="text-center text-gray-400 mb-4">Or flash QR Code</p>
-      <div className="flex justify-center">
-      <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                onClick={() => setShowScanner(true)}
-                className="h-14 w-14 bg-transparent border-[#5E6164]"
-              >
-                <QrCode className="size-8 text-white" />
-              </Button>
-              </div>
-    </div>
+        <p className="text-center text-gray-400 mb-4">Or flash QR Code</p>
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            onClick={() => setShowScanner(true)}
+            className="h-14 w-14 bg-transparent border-[#5E6164]"
+          >
+            <QrCode className="size-8 text-white" />
+          </Button>
+        </div>
+      </div>
+
+      {/* QR Code Scanner Modal */}
       {showScanner && (
         <QrCodeScanner
           onScanSuccess={handleScanSuccess}
