@@ -33,6 +33,9 @@ export function Navbar() {
   const isPendingListPage = merchantId && pathname === `/merchant/${merchantId}/pending`;
   const isPendingPaymentDetailPage = merchantId && pathname.match(/^\/merchant\/[^\/]+\/pending\/[^\/]+$/);
   
+  // Check if we're on completed pages
+  const isCompletedListPage = merchantId && pathname === `/merchant/${merchantId}/completed`;
+  const isCompletedPaymentDetailPage = merchantId && pathname.match(/^\/merchant\/[^\/]+\/completed\/[^\/]+$/);
   
   // Check if we're on a profile page
   const isMainProfilePage = pathname === '/profile';
@@ -130,22 +133,20 @@ export function Navbar() {
       return;
     }
     
-    // If on pending payment detail page, use router.back()
-    if (isPendingPaymentDetailPage) {
+    // If on pending payment detail page or completed payment detail page, use router.back()
+    if (isPendingPaymentDetailPage || isCompletedPaymentDetailPage) {
       router.back();
       return;
     }
     
-    // If on pending list page, go to merchant ID page
-    if (isPendingListPage) {
+    // If on pending list page or completed list page, go to merchant ID page
+    if (isPendingListPage || isCompletedListPage) {
       router.push(`/merchant/${merchantId}`);
       return;
     }
     
-   
-    
     // If on merchant ID page (not QR code or deposit or ask-payment), go to /merchant
-    if (isMerchantIdPage && !isAskPaymentPage && !isPendingListPage && !isPendingPaymentDetailPage) {
+    if (isMerchantIdPage && !isAskPaymentPage && !isPendingListPage && !isPendingPaymentDetailPage && !isCompletedListPage && !isCompletedPaymentDetailPage) {
       router.push('/merchant');
       return;
     }

@@ -171,7 +171,7 @@ export default function PaymentAccountPage() {
             </div>
             
             {/* Pending Payments Section */}
-            <div className="mb-10 flex flex-col gap-4">
+            <div className="mb-10 flex flex-col gap-8">
               <PendingPayments merchantId={accountId} limit={2} />
               <CompletedPayments merchantId={accountId} limit={2} />
             </div>
