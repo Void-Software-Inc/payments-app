@@ -106,6 +106,7 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
   useEffect(() => {
     // Initialize scanner
     try {
+      // Create scanner with default config (don't pass extra params)
       scannerRef.current = new Html5Qrcode("qr-reader");
       
       // Get list of cameras
@@ -166,8 +167,8 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
 
     // Calculate optimal QR box size based on container width
     const containerWidth = containerRef.current?.clientWidth || 300;
-    // Adjust QR box size for better detection
-    const qrboxSize = Math.min(containerWidth - 30, 240);
+    // Make QR box slightly smaller - important for our specific QR format
+    const qrboxSize = Math.min(containerWidth - 60, 200);
 
     setError(null);
     setIsScanning(true);
@@ -175,7 +176,7 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
     try {
       // Enhanced configuration with optimized settings for better detection
       const config = {
-        fps: 10, // Balanced fps for all devices
+        fps: 20, // Higher fps for better detection
         qrbox: { width: qrboxSize, height: qrboxSize },
         aspectRatio: 1.0,
         disableFlip: isIOS,
@@ -187,10 +188,9 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
           width: { min: 640, ideal: 1280, max: 1920 },
           height: { min: 480, ideal: 720, max: 1080 },
           facingMode: "environment",
-          // Advanced camera settings for better detection
+          // Only use options that are supported by MediaTrackConstraints
           advanced: [
-            { zoom: isIOS ? 1.5 : 1.2 }, // Slight zoom to better focus on QR codes
-            { focusMode: "continuous" }
+            { zoom: isIOS ? 2.0 : 1.5 } // Increased zoom to better focus on QR codes
           ]
         }
       };
@@ -215,6 +215,26 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
           }
         }
       );
+      
+      // Try to apply focus after a short delay
+      setTimeout(() => {
+        try {
+          const videoElement = document.querySelector('#qr-reader video') as HTMLVideoElement;
+          if (videoElement) {
+            if ('focus' in videoElement) {
+              videoElement.focus();
+            }
+            
+            // Apply brightness and contrast filters to video element
+            // This can help with detection on darker QR codes
+            if (videoElement.style) {
+              videoElement.style.filter = 'contrast(1.2) brightness(1.1)';
+            }
+          }
+        } catch (e) {
+          console.warn('Could not apply video enhancements', e);
+        }
+      }, 1000);
       
     } catch (err: any) {
       console.error("Error starting scanner:", err);
@@ -248,6 +268,8 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
           console.warn("Not a valid URL, using raw text");
         }
       }
+      
+      // Remove extraction logic - keep the full format
       
       if (paymentId) {
         // Add visual feedback
