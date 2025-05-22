@@ -176,13 +176,13 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
     try {
       // Enhanced configuration with optimized settings for better detection
       const config = {
-        fps: 20, // Higher fps for better detection
+        fps: 10, // Lower fps for more stable processing on mobile
         qrbox: { width: qrboxSize, height: qrboxSize },
         aspectRatio: 1.0,
         disableFlip: isIOS,
         formatsToSupport: ['QR_CODE'],
         experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
+          useBarCodeDetectorIfSupported: false // Disable experimental detector which can cause issues
         },
         videoConstraints: {
           width: { min: 640, ideal: 1280, max: 1920 },
@@ -190,7 +190,7 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
           facingMode: "environment",
           // Only use options that are supported by MediaTrackConstraints
           advanced: [
-            { zoom: isIOS ? 2.0 : 1.5 } // Increased zoom to better focus on QR codes
+            { zoom: isIOS ? 1.2 : 1.0 } // Use minimal zoom to avoid distortion
           ]
         }
       };
@@ -202,12 +202,19 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
           handleQrCodeScan(decodedText);
         },
         (errorMessage: string) => {
-          // Track repeated errors to detect hardware issues
+          // Completely ignore all errors in the callback
+          // Only show errors after a significant delay
+          
+          // Don't update state here to avoid triggering re-renders
+          // Just track the error for later
           if (errorMessage === lastErrorRef.current) {
             errorCountRef.current++;
-            // If same error appears more than 20 times in succession
-            if (errorCountRef.current > 20 && !error) {
-              setError("Having trouble scanning? Try in better lighting or restart the scanner.");
+            // Only show error after many consistent errors (100+) and significant time
+            if (errorCountRef.current > 100 && !error) {
+              // Use setTimeout to delay showing errors
+              setTimeout(() => {
+                setError("Having trouble scanning? Try in better lighting or restart the scanner.");
+              }, 5000); // 5 second delay before showing error
             }
           } else {
             lastErrorRef.current = errorMessage;
@@ -228,7 +235,7 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
             // Apply brightness and contrast filters to video element
             // This can help with detection on darker QR codes
             if (videoElement.style) {
-              videoElement.style.filter = 'contrast(1.2) brightness(1.1)';
+              videoElement.style.filter = 'contrast(1.1) brightness(1.05)';
             }
           }
         } catch (e) {
