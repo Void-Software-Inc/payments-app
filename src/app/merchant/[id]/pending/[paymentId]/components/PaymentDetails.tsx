@@ -402,7 +402,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
             <div className="flex justify-center mb-10">
               <div className="border border-[#737779] rounded-lg p-10 inline-block">
                 <QRCodeSVG 
-                  value={`${merchantId}/${payment.rawIntent?.fields?.key || payment.id}`}
+                  value={`${window.location.origin}/merchant/${merchantId}/pending/${payment.id}`} 
                   size={230}
                   bgColor="#2A2A2F"
                   fgColor="#FFFFFF"
