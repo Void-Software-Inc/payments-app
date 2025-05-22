@@ -282,6 +282,7 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
                 className="bg-transparent border-zinc-700 text-white text-md"
+                autoComplete="off"
               />
             </div>
             
