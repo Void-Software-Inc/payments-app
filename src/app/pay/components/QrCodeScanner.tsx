@@ -1,54 +1,37 @@
-import { useEffect, useState, useRef } from 'react';
-import { Html5Qrcode, CameraDevice } from 'html5-qrcode';
+import { useEffect, useRef, useState } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { X, RefreshCw, Camera } from 'lucide-react';
-
-// Extend the Window interface to override console methods
-declare global {
-  interface Window {
-    originalConsoleWarn?: typeof console.warn;
-  }
-}
+import { X, Camera, RefreshCw } from 'lucide-react';
 
 interface QrCodeScannerProps {
-  onScanSuccess: (paymentId: string) => void;
   onClose: () => void;
+  onScanSuccess: (scannedText: string) => void;
 }
 
-export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
-  const [isScanning, setIsScanning] = useState(false);
-  const [cameras, setCameras] = useState<CameraDevice[]>([]);
-  const [selectedCamera, setSelectedCamera] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+export function QrCodeScanner({ onClose, onScanSuccess }: QrCodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const lastErrorRef = useRef<string>('');
-  const errorCountRef = useRef<number>(0);
+  const [error, setError] = useState<string | null>(null);
+  const [isIOS, setIsIOS] = useState(false);
 
-  // Detect if user is on mobile device
   useEffect(() => {
+    // Detect iOS device
     const userAgent = navigator.userAgent || navigator.vendor;
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-    const iosDevice = /iPhone|iPad|iPod/i.test(userAgent);
-    setIsMobileDevice(isMobile);
-    setIsIOS(iosDevice);
-    
-    // Add CSS to fix iOS camera display issues
-    if (iosDevice) {
+    const ios = /iPhone|iPad|iPod/i.test(userAgent);
+    setIsIOS(ios);
+
+    // Add iOS-specific styles
+    if (ios) {
       const style = document.createElement('style');
       style.innerHTML = `
+        #qr-reader {
+          position: relative !important;
+          padding: 0 !important;
+        }
         #qr-reader video {
           object-fit: cover !important;
           width: 100% !important;
           height: 100% !important;
-        }
-        #qr-reader {
-          width: 100% !important;
-          min-height: 300px !important;
-          position: relative !important;
-          aspect-ratio: 1 / 1 !important;
+          border-radius: 8px !important;
         }
         #qr-reader > div {
           width: 100% !important;
@@ -62,316 +45,153 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
           height: 100% !important;
           min-height: 300px !important;
         }
-        #qr-reader__scan_region > video {
-          object-fit: cover !important;
-          border-radius: 8px !important;
-        }
       `;
       document.head.appendChild(style);
-      
       return () => {
         document.head.removeChild(style);
       };
     }
   }, []);
 
-  // Silence QR code error warnings
-  useEffect(() => {
-    // Store original console.warn
-    window.originalConsoleWarn = console.warn;
+  const startScanner = async () => {
+    if (!scannerRef.current) return;
     
-    // Override console.warn to filter out QR code errors
-    console.warn = function(...args) {
-      const message = args[0]?.toString() || '';
-      if (message.includes('QR code parse error') || 
-          message.includes('No MultiFormat Readers') || 
-          message.includes('No barcode or QR code detected')) {
-        // Silently ignore these common scanner warnings
-        return;
-      }
-      // Forward other warnings to original console.warn
-      if (window.originalConsoleWarn) {
-        window.originalConsoleWarn.apply(console, args);
-      }
-    };
-    
-    return () => {
-      // Restore original console.warn when component unmounts
-      if (window.originalConsoleWarn) {
-        console.warn = window.originalConsoleWarn;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    // Initialize scanner
     try {
-      scannerRef.current = new Html5Qrcode("qr-reader");
+      setError(null);
       
-      // Get list of cameras
-      Html5Qrcode.getCameras().then((devices: CameraDevice[]) => {
-        if (devices && devices.length) {
-          setCameras(devices);
-          
-          // On iOS, the front camera often has "front" in the label
-          if (isIOS) {
-            // For iOS, default to back camera (usually has "back" in the name)
-            const backCamera = devices.find((camera: CameraDevice) => 
-              camera.label.toLowerCase().includes('back')
-            );
-            // If no "back" camera found, use the last device which is typically the back camera on iOS
-            setSelectedCamera(backCamera?.id || devices[devices.length - 1].id);
-          } else {
-            // For Android or other devices
-            const backCamera = devices.find((camera: CameraDevice) => 
-              camera.label.toLowerCase().includes('back')
-            );
-            setSelectedCamera(backCamera?.id || devices[0].id);
-          }
-        } else {
-          setError("No cameras found. Please allow camera access.");
-        }
-      }).catch((err: Error) => {
-        console.error("Error getting cameras", err);
-        setError("Unable to access camera. Please allow camera access.");
-      });
-    } catch (err) {
-      console.error("Error initializing scanner:", err);
-      setError("Failed to initialize camera scanner.");
-    }
-
-    return () => {
-      if (scannerRef.current && isScanning) {
-        scannerRef.current.stop().catch(console.error);
-      }
-    };
-  }, [isIOS]);
-
-  useEffect(() => {
-    if (selectedCamera) {
-      startScanning();
-    }
-  }, [selectedCamera]);
-
-  const startScanning = async () => {
-    if (!scannerRef.current || !selectedCamera) return;
-    
-    if (isScanning) {
-      await scannerRef.current.stop().catch(console.error);
-    }
-
-    // Reset error tracking
-    lastErrorRef.current = '';
-    errorCountRef.current = 0;
-
-    // Calculate optimal QR box size based on container width
-    const containerWidth = containerRef.current?.clientWidth || 300;
-    // Adjust QR box size for better detection
-    const qrboxSize = Math.min(containerWidth - 30, 240);
-
-    setError(null);
-    setIsScanning(true);
-    
-    try {
-      // Enhanced configuration with optimized settings for better detection
+      // Configure scanner with optimized settings for mobile
       const config = {
-        fps: 10, // Balanced fps for all devices
-        qrbox: { width: qrboxSize, height: qrboxSize },
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
-        disableFlip: isIOS,
         formatsToSupport: ['QR_CODE'],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        },
         videoConstraints: {
           width: { min: 640, ideal: 1280, max: 1920 },
           height: { min: 480, ideal: 720, max: 1080 },
           facingMode: "environment",
-          // Advanced camera settings for better detection
+          // Enhanced settings for better mobile performance
           advanced: [
-            { zoom: isIOS ? 1.5 : 1.2 }, // Slight zoom to better focus on QR codes
+            { zoom: isIOS ? 1.5 : 1.2 }, // Slight zoom for better focus
             { focusMode: "continuous" }
           ]
         }
       };
-      
+
       await scannerRef.current.start(
-        selectedCamera,
+        { facingMode: "environment" } as any,
         config,
-        (decodedText: string) => {
+        (decodedText) => {
           handleQrCodeScan(decodedText);
         },
-        (errorMessage: string) => {
-          // Track repeated errors to detect hardware issues
-          if (errorMessage === lastErrorRef.current) {
-            errorCountRef.current++;
-            // If same error appears more than 20 times in succession
-            if (errorCountRef.current > 20 && !error) {
-              setError("Having trouble scanning? Try in better lighting or restart the scanner.");
-            }
-          } else {
-            lastErrorRef.current = errorMessage;
-            errorCountRef.current = 1;
-          }
+        () => {
+          // Silent error handling
         }
       );
-      
-    } catch (err: any) {
-      console.error("Error starting scanner:", err);
-      setError(`Error starting scanner: ${err.message || err}`);
-      setIsScanning(false);
+    } catch (err) {
+      console.error("Scanner error:", err);
+      setError("Camera access failed. Please check permissions.");
     }
   };
 
-  const switchCamera = async () => {
-    if (!cameras || cameras.length <= 1) return;
-    
-    const currentIndex = cameras.findIndex(c => c.id === selectedCamera);
-    const nextIndex = (currentIndex + 1) % cameras.length;
-    setSelectedCamera(cameras[nextIndex].id);
-  };
-
-  const handleQrCodeScan = (decodedText: string) => {
+  const handleQrCodeScan = async (decodedText: string) => {
     try {
-      console.log("Raw QR code scan result:", decodedText);
       let paymentId = decodedText.trim();
       
-      // Try to extract payment ID from URL if it's a URL
-      if (paymentId.startsWith('http')) {
-        try {
-          const url = new URL(paymentId);
-          
-          // First try to get from pathname
-          const pathSegments = url.pathname.split('/').filter(Boolean);
-          if (pathSegments.length) {
-            paymentId = pathSegments[pathSegments.length - 1].trim();
-          }
-          
-          // If not found in pathname, check for query parameters
-          if (!paymentId || paymentId.length < 32) {
-            // Check for id parameter in query string
-            const idParam = url.searchParams.get('id') || 
-                            url.searchParams.get('paymentId') || 
-                            url.searchParams.get('payment');
-            if (idParam) {
-              paymentId = idParam.trim();
-            }
-          }
-        } catch (e) {
-          console.warn("Not a valid URL, using raw text:", e);
-        }
-      }
-      
-      // Check if this is a deep link format with "suipay://" or similar
+      // Handle URL format
       if (paymentId.includes('://')) {
-        const deepLinkParts = paymentId.split('://');
-        if (deepLinkParts.length > 1) {
-          const pathPart = deepLinkParts[1];
-          // Extract the ID after the last slash
-          const pathSegments = pathPart.split('/').filter(Boolean);
-          if (pathSegments.length) {
-            paymentId = pathSegments[pathSegments.length - 1].trim();
-          }
-        }
+        const parts = paymentId.split('/');
+        paymentId = parts[parts.length - 1];
       }
       
-      // If the payment ID contains query params, clean it
+      // Clean up query parameters if present
       if (paymentId.includes('?')) {
-        paymentId = paymentId.split('?')[0].trim();
+        paymentId = paymentId.split('?')[0];
       }
-      
-      console.log("Processed payment ID from QR:", paymentId);
-      
-      // Check if we have a non-empty payment ID that's sufficiently long
-      if (paymentId && paymentId.length >= 32) {
-        // Add visual feedback
-        const qrReader = document.getElementById('qr-reader');
-        if (qrReader) {
-          qrReader.classList.add('success-scan');
-          setTimeout(() => qrReader.classList.remove('success-scan'), 500);
-        }
-        
-        // Stop scanner
-        if (scannerRef.current) {
-          scannerRef.current.stop().catch(console.error);
-        }
-        setIsScanning(false);
+
+      // Add success animation
+      const qrReader = document.getElementById('qr-reader');
+      if (qrReader) {
+        qrReader.classList.add('success-scan');
+      }
+
+      // Stop scanner and close
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
         onScanSuccess(paymentId);
         onClose();
-      } else {
-        console.warn("Invalid or too short payment ID:", paymentId);
-        setError("Invalid QR code format. Please try scanning again.");
-        // Don't close, let user try again
       }
     } catch (error) {
-      console.error("Error handling QR code scan:", error);
-      setError("Invalid QR code format. Please try scanning again.");
+      console.error("QR scan error:", error);
+      setError("Invalid QR code. Please try again.");
     }
   };
 
+  useEffect(() => {
+    // Initialize scanner
+    scannerRef.current = new Html5Qrcode("qr-reader");
+    startScanner();
+
+    // Cleanup
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(console.error);
+      }
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
-      <div ref={containerRef} className="bg-[#2A2A2F] p-6 rounded-lg w-[90%] max-w-md relative">
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+      <div className="bg-[#2A2A2F] rounded-lg p-6 w-full max-w-md relative">
         <Button
-          onClick={onClose}
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2"
+          className="absolute right-2 top-2 text-gray-400 hover:text-white"
+          onClick={onClose}
         >
-          <X className="size-4 text-white" />
+          <X className="h-5 w-5" />
         </Button>
-        
-        <h3 className="text-lg font-medium text-white mb-4">
+
+        <h3 className="text-lg font-medium text-white mb-4 text-center">
           Scan QR Code
         </h3>
-        
+
         {error && (
-          <div className="bg-red-900/30 text-red-300 p-3 rounded mb-4 text-sm">
-            {error}
-            <Button 
-              onClick={startScanning} 
-              variant="outline" 
-              size="sm" 
-              className="ml-2 h-7"
-            >
-              <RefreshCw className="size-3 mr-1" /> Retry
-            </Button>
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <p className="text-red-400 text-sm flex items-center justify-between">
+              {error}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={startScanner}
+                className="ml-2 text-red-400 hover:text-red-300"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Retry
+              </Button>
+            </p>
           </div>
         )}
-        
+
         <div 
           id="qr-reader" 
-          className="w-full overflow-hidden rounded-lg aspect-square"
-          style={{ width: '100%', aspectRatio: '1/1' }}
-        ></div>
+          className="w-full aspect-square bg-black rounded-lg overflow-hidden relative"
+        />
         
-        {cameras.length > 1 && (
-          <Button
-            onClick={switchCamera}
-            variant="outline"
-            className="w-full mt-4"
-            disabled={!isScanning}
-          >
-            <Camera className="size-4 mr-2" /> Switch Camera
-          </Button>
-        )}
-        
+        <p className="text-sm text-gray-400 text-center mt-4">
+          Position the QR code within the frame
+        </p>
+
         <style jsx>{`
           @keyframes success-flash {
-            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
           }
           :global(.success-scan) {
             animation: success-flash 0.5s ease-out;
-            border: 2px solid #16a34a !important;
+            border: 2px solid #22c55e !important;
           }
         `}</style>
-        
-        <p className="text-xs text-gray-400 mt-4 text-center">
-          Position your QR code within the scanner frame.
-          {isScanning ? " Scanning..." : ""}
-        </p>
       </div>
     </div>
   );
