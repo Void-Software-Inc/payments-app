@@ -944,8 +944,8 @@ packages:
   axios@1.9.0:
     resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
 
-  bun-types@1.2.13:
-    resolution: {integrity: sha512-rRjA1T6n7wto4gxhAO/ErZEtOXyEZEmnIHQfl0Dt1QQSB4QV0iP6BZ9/YB5fZaHFQ2dwHFrmPaRQ9GGMX01k9Q==}
+  bun-types@1.2.14:
+    resolution: {integrity: sha512-Kuh4Ub28ucMRWeiUUWMHsT9Wcbr4H3kLIO72RZZElSDxSu7vpetRvxIUDUaW6QtaIeixIpm7OXtNnZPf82EzwA==}
 
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
@@ -1492,7 +1492,7 @@ snapshots:
       '@mysten/sui': 1.30.0(typescript@5.8.3)
       '@mysten/suins': 0.7.16(typescript@5.8.3)
       '@polymedia/coinmeta': 0.0.24(@mysten/sui@1.30.0(typescript@5.8.3))
-      bun-types: 1.2.13
+      bun-types: 1.2.14
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
@@ -1505,7 +1505,7 @@ snapshots:
       '@mysten/sui': 1.30.0(typescript@5.8.3)
       '@mysten/suins': 0.7.16(typescript@5.8.3)
       '@polymedia/coinmeta': 0.0.24(@mysten/sui@1.30.0(typescript@5.8.3))
-      bun-types: 1.2.13
+      bun-types: 1.2.14
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
@@ -1516,7 +1516,7 @@ snapshots:
     dependencies:
       '@account.tech/core': 0.1.20(typescript@5.8.3)
       '@mysten/sui': 1.30.0(typescript@5.8.3)
-      bun-types: 1.2.13
+      bun-types: 1.2.14
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
@@ -2337,7 +2337,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  bun-types@1.2.13:
+  bun-types@1.2.14:
     dependencies:
       '@types/node': 22.15.21
 
