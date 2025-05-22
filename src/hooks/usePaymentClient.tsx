@@ -253,8 +253,51 @@ export function usePaymentClient() {
   // Get an intent directly by its ID
   const getIntent = async (userAddr: string, intentId: string) => {
     try {
+      // Ensure the intent ID is properly trimmed and sanitized
+      const sanitizedIntentId = intentId.trim();
+      
+      if (!sanitizedIntentId) {
+        console.error("Empty intent ID provided");
+        return null;
+      }
+      
+      // Initialize client without specifying payment account ID to access global intent store
       const client = await initClient(userAddr);
-      return client.getIntent(intentId);
+      
+      if (!client) {
+        console.error("Failed to initialize client for getIntent");
+        return null;
+      }
+      
+      // Add retry logic for mobile clients
+      let intent = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          intent = client.getIntent(sanitizedIntentId);
+          if (intent) break;
+        } catch (innerError) {
+          console.warn(`Attempt ${retryCount + 1} failed to get intent:`, innerError);
+        }
+        
+        // Wait before retry (exponential backoff)
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retryCount)));
+        }
+        retryCount++;
+      }
+      
+      if (!intent) {
+        console.error("Intent not found after retries:", sanitizedIntentId);
+        return null;
+      }
+      
+      // Log the intent for debugging
+      console.log("Retrieved intent:", intent);
+      
+      return intent;
     } catch (error) {
       console.error("Error getting intent:", error);
       return null;

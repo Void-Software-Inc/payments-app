@@ -195,9 +195,16 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
       try {
         // Extract payment ID from link if it's a link format
         let actualPaymentId = paymentId.trim();
+        
+        // Handle various formats of payment IDs that might come from QR codes or links
         if (actualPaymentId.includes('/')) {
           const parts = actualPaymentId.split('/');
           actualPaymentId = parts[parts.length - 1].trim();
+        }
+        
+        // Also handle URLs with query parameters
+        if (actualPaymentId.includes('?')) {
+          actualPaymentId = actualPaymentId.split('?')[0].trim();
         }
 
         // Ensure we're not trying to look up an empty string
@@ -205,32 +212,58 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
           console.warn("Empty payment ID after processing");
           return;
         }
+        
+        // Add a small delay for mobile devices
+        // This helps with timing issues in the nightly app
+        await new Promise(resolve => setTimeout(resolve, 300));
 
+        console.log(`Attempting to fetch intent details for ID: ${actualPaymentId}`);
         const intentDetails = await getIntent(currentAccount.address, actualPaymentId);
+        
         if (intentDetails) {
-          // Get amount from intent
-          const intentFields = intentDetails.fields as any;
-          const argsAmount = (intentDetails as any)?.args?.amount?.toString();
-          const fieldsAmount = intentFields?.amount?.toString();
-          const amount = argsAmount || fieldsAmount || '0';
+          console.log("Successfully retrieved intent details");
+          // Get amount from intent - handle different intent structure formats
+          const intentFields = intentDetails.fields || {};
+          const intentArgs = intentDetails.args || {};
+          
+          // Try multiple possible paths to find the amount
+          const amount = 
+            (intentArgs as any)?.amount?.toString() || 
+            (intentFields as any)?.amount?.toString() || 
+            ((intentDetails as any)?.args?.amount?.toString()) || 
+            ((intentDetails as any)?.fields?.amount?.toString()) || 
+            '0';
           
           // Format amount (assuming 6 decimals for USDC)
           const amountNumber = Number(amount) / 1_000_000;
           setPaymentAmount(amountNumber.toFixed(2));
           
-          // Get description
-          setPaymentDescription(intentFields?.description || null);
+          // Get description - also try multiple paths
+          const description = 
+            (intentFields as any)?.description || 
+            (intentArgs as any)?.description || 
+            ((intentDetails as any)?.fields?.description) || 
+            ((intentDetails as any)?.args?.description) || 
+            null;
+            
+          setPaymentDescription(description);
+        } else {
+          console.error("Intent details not found for ID:", actualPaymentId);
+          setPaymentAmount(null);
+          setPaymentDescription(null);
+          setError("Payment intent not found. Please check the ID and try again.");
         }
       } catch (error) {
         console.error("Error fetching payment details:", error);
         // Reset payment amount and description when intent not found
         setPaymentAmount(null);
         setPaymentDescription(null);
+        setError("Failed to retrieve payment details. Please try again.");
       }
     };
 
     fetchPaymentDetails();
-  }, [currentAccount?.address, paymentId]);
+  }, [currentAccount?.address, paymentId, getIntent]);
   
   return (
     <div className="pb-24">

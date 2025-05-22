@@ -48,12 +48,34 @@ export default function PayPage() {
     try {
       setIsProcessing(true)
       
-      // Get the intent details BEFORE processing the payment
+      // Ensure paymentId is properly sanitized
+      const sanitizedPaymentId = paymentId.trim();
+      
+      console.log(`Attempting to retrieve intent for payment ID: ${sanitizedPaymentId}`);
+      
+      // Get the intent details BEFORE processing the payment with retry logic
       // This is critical because after the payment is processed, the intent may be removed
-      const intentDetails = await getIntent(currentAccount.address, paymentId);
+      let intentDetails = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries && !intentDetails) {
+        try {
+          intentDetails = await getIntent(currentAccount.address, sanitizedPaymentId);
+          if (intentDetails) break;
+        } catch (innerError) {
+          console.warn(`Attempt ${retryCount + 1} failed to get intent:`, innerError);
+        }
+        
+        // Only wait if we're going to retry
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retryCount)));
+        }
+        retryCount++;
+      }
       
       if (!intentDetails) {
-        toast.error("Could not retrieve payment details. It may have already been paid.")
+        toast.error("Could not retrieve payment details. The payment may not exist or has already been paid.")
         setIsProcessing(false)
         return
       }
@@ -98,7 +120,7 @@ export default function PayPage() {
       await makePayment(
         currentAccount.address,
         tx,
-        paymentId,
+        sanitizedPaymentId,
         tip
       )
       
@@ -123,7 +145,7 @@ export default function PayPage() {
         
         // Extract payment details from events if available
         if (txResult.events && txResult.events.length > 0) {
-          console.log("Transaction events:", JSON.stringify(txResult.events));
+          console.log("Transaction events received");
           
           try {
             const paymentEvent = txResult.events.find((event: any) => 
@@ -158,19 +180,21 @@ export default function PayPage() {
     } catch (error: any) {
       console.error("Error making payment:", error)
       
-      // Show appropriate error messages
-      if (error.message?.includes('Payment not found')) {
+      // Show more detailed error messages
+      if (error.message?.includes('not found') || error.message?.includes('Intent not found')) {
         toast.error("Payment not found. Please check the payment ID and try again.")
       } else if (error.message?.includes('expired')) {
         toast.error("This payment request has expired.")
-      } else if (error.message?.includes('Insufficient balance')) {
+      } else if (error.message?.includes('insufficient') || error.message?.includes('Insufficient')) {
         toast.error("Insufficient funds. Please check your USDC balance.")
-      } else if (error.message?.includes('already paid')) {
+      } else if (error.message?.includes('already paid') || error.message?.includes('already processed')) {
         toast.error("This payment has already been completed.")
       } else if (error.message?.includes('transaction cost') || error.message?.includes('gas')) {
         toast.error("Not enough SUI for gas fees.")
+      } else if (error.message?.includes('denied') || error.message?.includes('rejected')) {
+        toast.error("Transaction was rejected.")
       } else {
-        toast.error("Failed to process payment. Please try again.")
+        toast.error("Failed to process payment: " + (error.message || "Unknown error"))
       }
     } finally {
       setIsProcessing(false)
