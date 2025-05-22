@@ -233,57 +233,23 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
 
   const handleQrCodeScan = (decodedText: string) => {
     try {
-      console.log("Raw QR code scan result:", decodedText);
       let paymentId = decodedText.trim();
       
       // Try to extract payment ID from URL if it's a URL
       if (paymentId.startsWith('http')) {
         try {
           const url = new URL(paymentId);
-          
-          // First try to get from pathname
           const pathSegments = url.pathname.split('/').filter(Boolean);
           if (pathSegments.length) {
             paymentId = pathSegments[pathSegments.length - 1].trim();
           }
-          
-          // If not found in pathname, check for query parameters
-          if (!paymentId || paymentId.length < 32) {
-            // Check for id parameter in query string
-            const idParam = url.searchParams.get('id') || 
-                            url.searchParams.get('paymentId') || 
-                            url.searchParams.get('payment');
-            if (idParam) {
-              paymentId = idParam.trim();
-            }
-          }
         } catch (e) {
-          console.warn("Not a valid URL, using raw text:", e);
+          // If not a valid URL, use the raw text
+          console.warn("Not a valid URL, using raw text");
         }
       }
       
-      // Check if this is a deep link format with "suipay://" or similar
-      if (paymentId.includes('://')) {
-        const deepLinkParts = paymentId.split('://');
-        if (deepLinkParts.length > 1) {
-          const pathPart = deepLinkParts[1];
-          // Extract the ID after the last slash
-          const pathSegments = pathPart.split('/').filter(Boolean);
-          if (pathSegments.length) {
-            paymentId = pathSegments[pathSegments.length - 1].trim();
-          }
-        }
-      }
-      
-      // If the payment ID contains query params, clean it
-      if (paymentId.includes('?')) {
-        paymentId = paymentId.split('?')[0].trim();
-      }
-      
-      console.log("Processed payment ID from QR:", paymentId);
-      
-      // Check if we have a non-empty payment ID that's sufficiently long
-      if (paymentId && paymentId.length >= 32) {
+      if (paymentId) {
         // Add visual feedback
         const qrReader = document.getElementById('qr-reader');
         if (qrReader) {
@@ -298,14 +264,10 @@ export function QrCodeScanner({ onScanSuccess, onClose }: QrCodeScannerProps) {
         setIsScanning(false);
         onScanSuccess(paymentId);
         onClose();
-      } else {
-        console.warn("Invalid or too short payment ID:", paymentId);
-        setError("Invalid QR code format. Please try scanning again.");
-        // Don't close, let user try again
       }
     } catch (error) {
       console.error("Error handling QR code scan:", error);
-      setError("Invalid QR code format. Please try scanning again.");
+      setError("Invalid QR code format");
     }
   };
 
