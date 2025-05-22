@@ -12,7 +12,6 @@ export function QrCodeScanner({ onClose, onScanSuccess }: QrCodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isIOS, setIsIOS] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     // Detect iOS device
@@ -60,31 +59,20 @@ export function QrCodeScanner({ onClose, onScanSuccess }: QrCodeScannerProps) {
     try {
       setError(null);
       
-      // Calculate optimal QR box size based on screen dimensions
-      const width = Math.min(window.innerWidth, 1000);
-      const qrboxSizeSmaller = isIOS ? Math.floor(width * 0.5) : Math.floor(width * 0.6);
-      
       // Configure scanner with optimized settings for mobile
       const config = {
-        fps: isIOS ? 15 : 10, // Higher FPS for iOS
-        qrbox: { width: qrboxSizeSmaller, height: qrboxSizeSmaller },
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
-        disableFlip: false, // Allow image flipping for better detection
-        formatsToSupport: ['QR_CODE', 'DATA_MATRIX'],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        },
-        rememberLastUsedCamera: true,
+        formatsToSupport: ['QR_CODE'],
         videoConstraints: {
           width: { min: 640, ideal: 1280, max: 1920 },
           height: { min: 480, ideal: 720, max: 1080 },
           facingMode: "environment",
           // Enhanced settings for better mobile performance
           advanced: [
-            { zoom: isIOS ? 2.0 : 1.2 }, // Higher zoom for iOS for better focus
-            { focusMode: "continuous" },
-            { exposureMode: "continuous" },
-            { whiteBalanceMode: "continuous" }
+            { zoom: isIOS ? 1.5 : 1.2 }, // Slight zoom for better focus
+            { focusMode: "continuous" }
           ]
         }
       };
@@ -95,9 +83,8 @@ export function QrCodeScanner({ onClose, onScanSuccess }: QrCodeScannerProps) {
         (decodedText) => {
           handleQrCodeScan(decodedText);
         },
-        (errorMessage) => {
-          // Silent error handling during scan
-          console.log("QR scan process error:", errorMessage);
+        () => {
+          // Silent error handling
         }
       );
     } catch (err) {
@@ -140,35 +127,17 @@ export function QrCodeScanner({ onClose, onScanSuccess }: QrCodeScannerProps) {
   };
 
   useEffect(() => {
-    // Initialize scanner with a slight delay to ensure DOM is ready
-    const initTimer = setTimeout(() => {
-      try {
-        if (document.getElementById("qr-reader")) {
-          scannerRef.current = new Html5Qrcode("qr-reader");
-          startScanner();
-        }
-      } catch (err) {
-        console.error("Scanner init error:", err);
-        setError("Failed to initialize scanner. Please try again.");
-      }
-    }, 500);
+    // Initialize scanner
+    scannerRef.current = new Html5Qrcode("qr-reader");
+    startScanner();
 
     // Cleanup
     return () => {
-      clearTimeout(initTimer);
       if (scannerRef.current) {
         scannerRef.current.stop().catch(console.error);
       }
     };
-  }, [retryCount]);
-
-  const resetScanner = () => {
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(console.error).finally(() => {
-        setRetryCount(prev => prev + 1);
-      });
-    }
-  };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
@@ -193,7 +162,7 @@ export function QrCodeScanner({ onClose, onScanSuccess }: QrCodeScannerProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={resetScanner}
+                onClick={startScanner}
                 className="ml-2 text-red-400 hover:text-red-300"
               >
                 <RefreshCw className="h-4 w-4 mr-1" />
@@ -211,15 +180,6 @@ export function QrCodeScanner({ onClose, onScanSuccess }: QrCodeScannerProps) {
         <p className="text-sm text-gray-400 text-center mt-4">
           Position the QR code within the frame
         </p>
-
-        <Button 
-          variant="outline" 
-          className="w-full mt-3 border-gray-700 hover:bg-gray-700 text-gray-300"
-          onClick={resetScanner}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Reset Scanner
-        </Button>
 
         <style jsx>{`
           @keyframes success-flash {
