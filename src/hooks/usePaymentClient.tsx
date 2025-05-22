@@ -250,6 +250,16 @@ export function usePaymentClient() {
     }
   };
 
+  const getForeignIntent = async (userAddr: string, accountId: string, intentId: string) => {
+    try {
+      const client = await initClient(userAddr, accountId);
+      return client.getIntent(intentId);
+    } catch (error) {
+      console.error("Error getting foreign intent:", error);
+      return null;
+    }
+  };
+
   // Get an intent directly by its ID
   const getIntent = async (userAddr: string, intentId: string) => {
     try {
@@ -684,6 +694,7 @@ export function usePaymentClient() {
     getIntentStatus,
     getDepsStatus,
     getIntent,
+    getForeignIntent,
     getIntents,
     getFilteredIntents,
     getDisplayIntents,

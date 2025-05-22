@@ -131,51 +131,11 @@ export default function PayPage() {
         tx,
         signTransaction,
         toast
-      }).catch(err => {
-        // Handle user rejection of transaction
-        if (err.message?.includes('User rejected')) {
-          toast.error("Transaction canceled by user")
-          return null
-        }
-        throw err
       })
       
-      if (txResult) {
-        handleTxResult(txResult, toast)
-        
-        // Extract payment details from events if available
-        if (txResult.events && txResult.events.length > 0) {
-          console.log("Transaction events received");
-          
-          try {
-            const paymentEvent = txResult.events.find((event: any) => 
-              event?.type?.includes('::payment_events::PaymentExecuted')
-            );
-            
-            if (paymentEvent?.parsedJson) {
-              const data = paymentEvent.parsedJson;
-              
-              // Show success message with formatted amount and include tip if present
-              const formattedAmount = formatSuiBalance(BigInt(data.amount));
-              const tipAmount = data.tip_amount ? formatSuiBalance(BigInt(data.tip_amount)) : null;
-              
-              if (tipAmount) {
-                toast.success(`Paid ${formattedAmount} + ${tipAmount} tip to ${truncateMiddle(data.issued_by || issuedBy)}`);
-              } else {
-                toast.success(`Paid ${formattedAmount} to ${truncateMiddle(data.issued_by || issuedBy)}`);
-              }
-            }
-          } catch (error) {
-            console.warn("Error parsing payment events:", error);
-          }
-        }
-        
-        // Reset client
-        refreshClient();
-        
-        // Redirect to a success page or home
-        setTimeout(() => router.push('/'), 1500)
-      }
+      handleTxResult(txResult, toast);
+      refreshClient();
+      router.push('/');
       
     } catch (error: any) {
       console.error("Error making payment:", error)
