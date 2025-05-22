@@ -12,7 +12,7 @@ interface ExtendedIntent extends Intent {
 }
 
 // Define interface for IntentArgs to match what's used in payment intents
-interface ExtendedIntentArgs {
+export interface ExtendedIntentArgs {
   amount?: string | number;
   coinType?: string;
   description?: string;
