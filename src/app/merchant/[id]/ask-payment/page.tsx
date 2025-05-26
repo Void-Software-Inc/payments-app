@@ -127,16 +127,6 @@ export default function AskPaymentPage() {
             tx,
             signTransaction,
             toast
-          }).catch(err => {
-            // Check for user rejection patterns more broadly
-            if (err.message?.includes('User rejected') || 
-                err.message?.includes('rejected') || 
-                err.message?.includes('cancelled') ||
-                err.message?.includes('canceled') ||
-                err.code === 4001) { // Standard wallet rejection code
-              throw new Error('User rejected transaction')
-            }
-            throw err
           })
 
           handleTxResult(txResult, toast)
@@ -146,13 +136,25 @@ export default function AskPaymentPage() {
           return // Success, exit the function
           
         } catch (error: any) {
-          // Check for user rejection first - don't retry if user rejected
-          if (error.message?.includes('User rejected') || 
-              error.message?.includes('rejected') || 
-              error.message?.includes('cancelled') ||
-              error.message?.includes('canceled') ||
-              error.code === 4001) {
-            throw new Error('User rejected transaction')
+          console.log("Transaction error:", error)
+          
+          // Comprehensive user rejection detection
+          const isUserRejection = 
+            error?.code === 4001 || // Standard wallet rejection code
+            error?.code === -32603 || // Another common rejection code
+            error?.message?.toLowerCase().includes('user') ||
+            error?.message?.toLowerCase().includes('reject') ||
+            error?.message?.toLowerCase().includes('cancel') ||
+            error?.message?.toLowerCase().includes('denied') ||
+            error?.message?.toLowerCase().includes('abort') ||
+            error?.cause?.message?.toLowerCase().includes('user') ||
+            error?.cause?.message?.toLowerCase().includes('reject') ||
+            String(error).toLowerCase().includes('user') ||
+            String(error).toLowerCase().includes('reject')
+          
+          if (isUserRejection) {
+            toast.error("Transaction canceled by user")
+            return // Exit immediately, don't retry
           }
           
           lastError = error
@@ -172,11 +174,17 @@ export default function AskPaymentPage() {
     } catch (error: any) {
       console.error("Error generating payment:", error)
       
-      // Handle user rejection of transaction
-      if (error.message?.includes('User rejected') || 
-          error.message?.includes('rejected') || 
-          error.message?.includes('cancelled') ||
-          error.message?.includes('canceled')) {
+      // Handle user rejection of transaction (shouldn't reach here now, but keeping as fallback)
+      const isUserRejection = 
+        error?.code === 4001 || 
+        error?.code === -32603 ||
+        error?.message?.toLowerCase().includes('user') ||
+        error?.message?.toLowerCase().includes('reject') ||
+        error?.message?.toLowerCase().includes('cancel') ||
+        String(error).toLowerCase().includes('user') ||
+        String(error).toLowerCase().includes('reject')
+      
+      if (isUserRejection) {
         toast.error("Transaction canceled by user")
         return
       }
