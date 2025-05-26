@@ -65,7 +65,7 @@ export function PaymentAccountsList({ onAccountsLoaded }: PaymentAccountsListPro
     }
     
     fetchPaymentAccounts()
-  }, [currentAccount?.address, refreshCounter, pathname, onAccountsLoaded])
+  }, [currentAccount?.address, refreshCounter, onAccountsLoaded])
   
   if (isLoading) {
     return (
@@ -124,11 +124,11 @@ export function PaymentAccountsList({ onAccountsLoaded }: PaymentAccountsListPro
             <div className={`grid gap-2 mb-8 ${
               currentAccounts.length < 3 
                 ? 'grid-cols-1 md:flex md:justify-center md:gap-4' 
-                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                : 'grid-cols-1 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-4'
             }`}>
               {currentAccounts.map((account) => (
                 <Link href={`/merchant/${account.id}`} key={account.id} className="block transition-transform hover:scale-[1.02]">
-                  <div className="bg-[#212229] border border-[#33363A] rounded-md overflow-hidden h-full cursor-pointer hover:border-[#78BCDB] p-4 relative">
+                  <div className="bg-[#212229] border border-[#33363A] rounded-md overflow-hidden h-full cursor-pointer hover:border-[#78BCDB] p-4 relative md:w-[200px]">
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="text-lg text-white/80">{account.name}</h3>

@@ -79,7 +79,7 @@ export default function RecoveryPage() {
         ) : (
           <>
             {/* Form Card */}
-            <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
+            <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg max-w-2xl mx-auto">
               <CardContent className="space-y-6 my-3">
                 <p className="text-gray-400 text-sm">
                   Set up a recovery address that can help you regain access to your account if you lose your keys.
@@ -90,7 +90,7 @@ export default function RecoveryPage() {
             
             {/* Recovery Addresses Card */}
             {(isLoading || recoveryAddresses.length > 0) && (
-              <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg mt-6">
+              <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg mt-6 max-w-2xl mx-auto">
                 <CardContent className="space-y-4 my-0">
                   <h3 className="text-md font-medium text-[#c8c8c8]">Current Recovery Addresses</h3>
                   <RecoveryAddressList 

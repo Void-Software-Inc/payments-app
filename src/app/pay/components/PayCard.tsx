@@ -253,7 +253,7 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   const formattedUsdcBalance = formatUsdcBalance(balanceInUsdc, usdcDecimals);
   
   return (
-    <div className="pb-24">
+    <div className="pb-24 max-w-xl mx-auto">
       <Card className="w-full bg-[#2A2A2F] border-[#33363A] rounded-lg shadow-lg">
         <CardContent className="space-y-6 mt-1 mb-3">
           {/* Payment ID Input */}

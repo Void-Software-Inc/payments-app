@@ -29,7 +29,7 @@ export default function MerchantPage() {
       <main className="w-dvw h-dvh container mx-auto px-4 pt-6 pb-8 max-w-2xl">
         <div className="flex justify-center items-center w-full mb-6">
             <h1 className="text-2xl font-bold text-white text-center">
-              {accountCount === 1 ? "Merchant Account" : "Merchant Accounts"}
+              Merchant Accounts
             </h1>
         </div>
         <PaymentAccountsList onAccountsLoaded={handleAccountsLoaded} />
