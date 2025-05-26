@@ -152,7 +152,8 @@ export function CreatePaymentForm() {
               placeholder="Enter account name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white"
+              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white text-base"
+              style={{ fontSize: '16px' }}
               required
               autoComplete="off"
             />
@@ -165,7 +166,8 @@ export function CreatePaymentForm() {
               placeholder=""
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white"
+              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white text-base"
+              style={{ fontSize: '16px' }}
               autoComplete="off"
               disabled
             />
@@ -178,7 +180,8 @@ export function CreatePaymentForm() {
               placeholder=""
               value={profilePicture}
               onChange={(e) => setProfilePicture(e.target.value)}
-              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white"
+              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white text-base"
+              style={{ fontSize: '16px' }}
               autoComplete="off"
               disabled
             />
