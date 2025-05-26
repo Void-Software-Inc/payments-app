@@ -387,7 +387,7 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
 
       {/* QR Code Section */}
       <div className="my-10">
-        <p className="text-center text-gray-400 mb-4">Or flash QR Code</p>
+        <p className="text-center text-gray-400 mb-4">Or flash QR Code (coming soon)</p>
         <div className="flex justify-center">
           <Button
             type="button"
