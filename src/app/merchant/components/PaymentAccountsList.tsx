@@ -108,7 +108,7 @@ export function PaymentAccountsList({ onAccountsLoaded }: PaymentAccountsListPro
     <div className="flex flex-col mt-14">
       <div className="flex-grow">
         {paymentAccounts.length === 0 ? (
-          <div className="text-center m-8 text-white p-2">No payment accounts found</div>
+          <div className="text-center m-8 text-white p-2">No merchant accounts found</div>
         ) : (
           <div className="grid gap-2 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {paymentAccounts.map((account) => (
