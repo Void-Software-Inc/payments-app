@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,7 @@ export function CreatePaymentForm() {
   const [profilePicture, setProfilePicture] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isClientReady, setIsClientReady] = useState(false)
   
   const { refreshClient } = usePaymentStore()
   const { createPaymentAccount, getUser } = usePaymentClient()
@@ -25,6 +26,24 @@ export function CreatePaymentForm() {
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
   const router = useRouter()
+  
+  // Ensure payment client is initialized
+  useEffect(() => {
+    const checkClientReady = async () => {
+      try {
+        if (currentAccount?.address) {
+          await getUser(currentAccount.address)
+          setIsClientReady(true)
+        }
+      } catch (err) {
+        console.log("Payment client initializing...")
+        // Wait and try again
+        setTimeout(checkClientReady, 1000)
+      }
+    }
+    
+    checkClientReady()
+  }, [currentAccount?.address, getUser])
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -44,7 +63,24 @@ export function CreatePaymentForm() {
       setError(null)
       
       // Get current user to check if user has an ID
-      const currentUser = await getUser(currentAccount.address)
+      let currentUser = null
+      let retryCount = 0
+      const maxRetries = 2
+      
+      // Retry getUser if it fails initially
+      while (retryCount <= maxRetries) {
+        try {
+          currentUser = await getUser(currentAccount.address)
+          break
+        } catch (err) {
+          retryCount++
+          if (retryCount > maxRetries) {
+            throw new Error("Failed to retrieve user data. Please try again.")
+          }
+          // Wait briefly before retrying
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+      }
       
       // Create a new transaction block
       const tx = new Transaction()
@@ -96,7 +132,7 @@ export function CreatePaymentForm() {
       
     } catch (err) {
       console.error("Error creating payment account:", err)
-      setError("Failed to create payment account")
+      setError(err instanceof Error ? err.message : "Failed to create payment account")
       toast.error(err instanceof Error ? err.message : "Failed to create payment account")
     } finally {
       setIsCreating(false)
@@ -154,7 +190,7 @@ export function CreatePaymentForm() {
             type="submit"
             className="w-full h-12 rounded-full font-medium mt-8"
             style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
-            disabled={isCreating}
+            disabled={isCreating || !currentAccount}
           >
             {isCreating ? "Creating..." : "Create Account"}
           </Button>
