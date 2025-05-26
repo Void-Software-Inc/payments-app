@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
@@ -140,64 +141,70 @@ export function CreatePaymentForm() {
   }
   
   return (
-    <div className="h-full w-full bg-[#1B1D22] flex flex-col items-center justify-center pt-24">
+    <div className="h-full w-full flex flex-col items-center justify-center pt-24">
       <div className="w-[90%] max-w-md">
-        <h1 className="text-4xl font-bold text-white mb-16 text-center">Create Account</h1>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-[#B2B2B2]">Name</Label>
-            <Input
-              id="name"
-              placeholder="Enter account name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white text-base"
-              style={{ fontSize: '16px' }}
-              required
-              autoComplete="off"
-            />
-          </div>
+        <Card className="bg-[#2A2A2F] border-none">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-white text-center">Create Account</CardTitle>
+          </CardHeader>
           
-          <div className="space-y-2">
-            <Label htmlFor="username" className="text-[#B2B2B2]">Username (Coming soon)</Label>
-            <Input
-              id="username"
-              placeholder=""
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white text-base"
-              style={{ fontSize: '16px' }}
-              autoComplete="off"
-              disabled
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="profilePicture" className="text-[#B2B2B2]">Profile Picture URL (Coming soon)</Label>
-            <Input
-              id="profilePicture"
-              placeholder=""
-              value={profilePicture}
-              onChange={(e) => setProfilePicture(e.target.value)}
-              className="h-12 bg-[#2A2A2F] border-[#595C5F] text-white text-base"
-              style={{ fontSize: '16px' }}
-              autoComplete="off"
-              disabled
-            />
-          </div>
-          
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          
-          <Button
-            type="submit"
-            className="w-full h-12 rounded-full font-medium mt-8"
-            style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
-            disabled={isCreating || !currentAccount}
-          >
-            {isCreating ? "Creating..." : "Create Account"}
-          </Button>
-        </form>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-[#B2B2B2]">Name</Label>
+                <Input
+                  id="name"
+                  placeholder="Enter account name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-12 bg-[#1B1D22] border-[#595C5F] text-white text-base"
+                  style={{ fontSize: '16px' }}
+                  required
+                  autoComplete="off"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-[#B2B2B2]">Username (Coming soon)</Label>
+                <Input
+                  id="username"
+                  placeholder=""
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="h-12 bg-[#1B1D22] border-[#595C5F] text-white text-base"
+                  style={{ fontSize: '16px' }}
+                  autoComplete="off"
+                  disabled
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="profilePicture" className="text-[#B2B2B2]">Profile Picture URL (Coming soon)</Label>
+                <Input
+                  id="profilePicture"
+                  placeholder=""
+                  value={profilePicture}
+                  onChange={(e) => setProfilePicture(e.target.value)}
+                  className="h-12 bg-[#1B1D22] border-[#595C5F] text-white text-base"
+                  style={{ fontSize: '16px' }}
+                  autoComplete="off"
+                  disabled
+                />
+              </div>
+              
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+              
+              <Button
+                type="submit"
+                className="w-full text-md h-13 rounded-full font-medium mt-8"
+                style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
+                disabled={isCreating || !currentAccount}
+              >
+                {isCreating ? "Creating..." : "Create Account"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

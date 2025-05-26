@@ -224,14 +224,15 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
           <p className="text-sm text-amber-500 mt-1">{addressError}</p>
         )}
       </div>
-      
+      <div className='w-full h-fit flex justify-center'>
       <Button
         type="submit"
         disabled={isSubmitting || !recoveryAddressString || addressError !== null || !isClientReady}
-        className="w-full h-12 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
+        className="w-max-[300px] px-6 h-13 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
       >
         {isSubmitting ? 'Setting up...' : isClientReady ? 'Set Recovery Address' : 'Initializing...'}
       </Button>
+      </div>
     </form>
   );
 } 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { usePaymentStore } from "@/store/usePaymentStore"
 import { usePaymentClient } from "@/hooks/usePaymentClient"
 import { useCurrentAccount } from "@mysten/dapp-kit"
-import { PlusCircle, ChevronRight } from "lucide-react"
+import { PlusCircle, ChevronRight, ChevronLeft } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { truncateMiddle } from "@/utils/formatters"
@@ -23,11 +23,18 @@ export function PaymentAccountsList({ onAccountsLoaded }: PaymentAccountsListPro
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const { getUserPaymentAccounts } = usePaymentClient()
   const currentAccount = useCurrentAccount()
   const pathname = usePathname()
+  
+  const accountsPerPage = 9
+  const totalPages = Math.ceil(paymentAccounts.length / accountsPerPage)
+  const startIndex = (currentPage - 1) * accountsPerPage
+  const endIndex = startIndex + accountsPerPage
+  const currentAccounts = paymentAccounts.slice(startIndex, endIndex)
   
   useEffect(() => {
     const fetchPaymentAccounts = async () => {
@@ -44,6 +51,9 @@ export function PaymentAccountsList({ onAccountsLoaded }: PaymentAccountsListPro
         console.log("Fetched payment accounts:", accounts)
         setPaymentAccounts(accounts)
         
+        // Reset to first page when accounts change
+        setCurrentPage(1)
+        
         // Notify parent component about the number of accounts
         onAccountsLoaded?.(accounts.length)
       } catch (err) {
@@ -55,7 +65,7 @@ export function PaymentAccountsList({ onAccountsLoaded }: PaymentAccountsListPro
     }
     
     fetchPaymentAccounts()
-  }, [currentAccount?.address, refreshCounter, pathname, onAccountsLoaded])
+  }, [currentAccount?.address, refreshCounter, onAccountsLoaded])
   
   if (isLoading) {
     return (
@@ -110,21 +120,55 @@ export function PaymentAccountsList({ onAccountsLoaded }: PaymentAccountsListPro
         {paymentAccounts.length === 0 ? (
           <div className="text-center m-8 text-white p-2">No merchant accounts found</div>
         ) : (
-          <div className="grid gap-2 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            {paymentAccounts.map((account) => (
-              <Link href={`/merchant/${account.id}`} key={account.id} className="block transition-transform hover:scale-[1.02]">
-                <div className="bg-[#212229] border border-[#33363A] rounded-md overflow-hidden h-full cursor-pointer hover:border-[#78BCDB] p-4 relative">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg text-white/80">{account.name}</h3>
-                      <p className="text-base text-gray-400">ID: {truncateMiddle(account.id)}</p>
+          <>
+            <div className={`grid gap-2 mb-8 ${
+              currentAccounts.length < 3 
+                ? 'grid-cols-1 md:flex md:justify-center md:gap-4' 
+                : 'grid-cols-1 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-4'
+            }`}>
+              {currentAccounts.map((account) => (
+                <Link href={`/merchant/${account.id}`} key={account.id} className="block transition-transform hover:scale-[1.02]">
+                  <div className="bg-[#212229] border border-[#33363A] rounded-md overflow-hidden h-full cursor-pointer hover:border-[#78BCDB] p-4 relative md:w-[200px]">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-lg text-white/80">{account.name}</h3>
+                        <p className="text-base text-gray-400">ID: {truncateMiddle(account.id)}</p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mb-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="bg-[#2A2A2F] border-[#595C5F] text-white hover:bg-[#33363A]"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                <span className="text-white text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="bg-[#2A2A2F] border-[#595C5F] text-white hover:bg-[#33363A]"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
       {renderCreateButton()}

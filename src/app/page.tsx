@@ -69,7 +69,7 @@ export default function Home() {
         <BalanceCard />
 
         <Link href="/merchant" className="block">
-          <div className="bg-[#2A2A2F] rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-[#1e293b]/80 transition-colors mb-4">
+          <div className="bg-[#2A2A2F] max-w-xl mx-auto rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-[#1e293b]/80 transition-colors mb-4">
             <div className="flex items-center gap-3">
               <Store className="h-5 w-5 text-[#78BCDB]" />
               <span className="text-white font-medium">Go to Merchant</span>

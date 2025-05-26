@@ -49,10 +49,10 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false, accountNa
   }
 
   return (
-    <Card className="w-full h-fit bg-[#2A2A2F] p-0 border-none">
+    <Card className="w-full h-fit bg-[#2A2A2F] p-0 border-none max-w-xl mx-auto">
       <CardHeader className="px-6 pt-6">
         <CardDescription className="text-zinc-400">
-          {accountName && <span className="text-xl text-white font-semibold block mb-2">{accountName}</span>}
+          {accountName && <span className="text-2xl text-white font-semibold block mb-2">{accountName}</span>}
           Generate a payment request that your customers can pay later. The payment request will create a unique payment ID that can be shared.
         </CardDescription>
       </CardHeader>
@@ -130,7 +130,7 @@ export function PaymentForm({ onGeneratePayment, isProcessing = false, accountNa
           <Button 
             type="submit"
             disabled={isProcessing}
-            className="w-full h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
+            className="w-full max-w-[300px] mx-auto h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
           >
             {isProcessing ? (
               <>
