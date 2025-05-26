@@ -99,7 +99,7 @@ export default function AskPaymentPage() {
       // Log the amount for debugging purposes
       console.log("Issuing payment with amount:", amount, "converted to smallest unit:", amountInSmallestUnit.toString())
       
-      // Retry logic for issuePayment
+      // Retry logic for issuePayment (only for initialization issues, not user rejections)
       let retryCount = 0
       const maxRetries = 2
       let lastError = null
@@ -120,13 +120,23 @@ export default function AskPaymentPage() {
             amountInSmallestUnit
           )
           
-          // Execute the transaction
+          // Execute the transaction - handle user rejection immediately
           const txResult = await signAndExecute({
             suiClient,
             currentAccount,
             tx,
             signTransaction,
             toast
+          }).catch(err => {
+            // Check for user rejection patterns more broadly
+            if (err.message?.includes('User rejected') || 
+                err.message?.includes('rejected') || 
+                err.message?.includes('cancelled') ||
+                err.message?.includes('canceled') ||
+                err.code === 4001) { // Standard wallet rejection code
+              throw new Error('User rejected transaction')
+            }
+            throw err
           })
 
           handleTxResult(txResult, toast)
@@ -136,13 +146,17 @@ export default function AskPaymentPage() {
           return // Success, exit the function
           
         } catch (error: any) {
+          // Check for user rejection first - don't retry if user rejected
+          if (error.message?.includes('User rejected') || 
+              error.message?.includes('rejected') || 
+              error.message?.includes('cancelled') ||
+              error.message?.includes('canceled') ||
+              error.code === 4001) {
+            throw new Error('User rejected transaction')
+          }
+          
           lastError = error
           retryCount++
-          
-          // If it's a user rejection, don't retry
-          if (error.message?.includes('User rejected')) {
-            throw error
-          }
           
           if (retryCount <= maxRetries) {
             console.log(`Payment attempt ${retryCount} failed, retrying...`)
@@ -159,7 +173,10 @@ export default function AskPaymentPage() {
       console.error("Error generating payment:", error)
       
       // Handle user rejection of transaction
-      if (error.message?.includes('User rejected')) {
+      if (error.message?.includes('User rejected') || 
+          error.message?.includes('rejected') || 
+          error.message?.includes('cancelled') ||
+          error.message?.includes('canceled')) {
         toast.error("Transaction canceled by user")
         return
       }
