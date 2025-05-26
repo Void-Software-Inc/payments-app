@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Payments Dapp",
+  title: "Drift",
   description: "Payments Dapp for SUI powered by Account.tech",
 };
 
