@@ -21,6 +21,7 @@ export default function AskPaymentPage() {
   const router = useRouter()
   const paymentAccountId = params.id as string // This is the payment account ID
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isClientReady, setIsClientReady] = useState(false)
   
   const { initPaymentClient, issuePayment, getPaymentAccount, getUserPaymentAccounts } = usePaymentClient()
   const { refreshClient } = usePaymentStore()
@@ -55,9 +56,13 @@ export default function AskPaymentPage() {
         }
         
         setPageError(null)
+        setIsClientReady(true)
       } catch (error) {
         console.error("Error initializing payment client:", error)
         setPageError("Could not initialize payment client. Please try again.")
+        setIsClientReady(false)
+        // Retry initialization after a delay
+        setTimeout(() => initClient(), 1000)
       }
     }
     
@@ -80,6 +85,11 @@ export default function AskPaymentPage() {
       return
     }
 
+    if (!isClientReady) {
+      toast.error("Payment client is still initializing. Please wait a moment and try again.")
+      return
+    }
+
     try {
       setIsProcessing(true)
       
@@ -89,42 +99,76 @@ export default function AskPaymentPage() {
       // Log the amount for debugging purposes
       console.log("Issuing payment with amount:", amount, "converted to smallest unit:", amountInSmallestUnit.toString())
       
-      // Create a new transaction
-      const tx = new Transaction()
-      // Note: We don't set gas budget here to let the wallet handle it
+      // Retry logic for issuePayment
+      let retryCount = 0
+      const maxRetries = 2
+      let lastError = null
       
-      // Call issuePayment function with the payment account ID
-      await issuePayment(
-        currentAccount.address,
-        paymentAccountId, // Using the payment account ID from the URL params
-        tx,
-        message || "Payment request",
-        USDC_COIN_TYPE,
-        amountInSmallestUnit
-      )
-      
-      // Execute the transaction
-      const txResult = await signAndExecute({
-        suiClient,
-        currentAccount,
-        tx,
-        signTransaction,
-        toast
-      })
+      while (retryCount <= maxRetries) {
+        try {
+          // Create a new transaction
+          const tx = new Transaction()
+          // Note: We don't set gas budget here to let the wallet handle it
+          
+          // Call issuePayment function with the payment account ID
+          await issuePayment(
+            currentAccount.address,
+            paymentAccountId, // Using the payment account ID from the URL params
+            tx,
+            message || "Payment request",
+            USDC_COIN_TYPE,
+            amountInSmallestUnit
+          )
+          
+          // Execute the transaction
+          const txResult = await signAndExecute({
+            suiClient,
+            currentAccount,
+            tx,
+            signTransaction,
+            toast
+          })
 
-      handleTxResult(txResult, toast)
-      refreshClient();
-      // Redirect to home payment account page
-      router.push(`/merchant/${paymentAccountId}`)
+          handleTxResult(txResult, toast)
+          refreshClient();
+          // Redirect to home payment account page
+          router.push(`/merchant/${paymentAccountId}`)
+          return // Success, exit the function
+          
+        } catch (error: any) {
+          lastError = error
+          retryCount++
+          
+          // If it's a user rejection, don't retry
+          if (error.message?.includes('User rejected')) {
+            throw error
+          }
+          
+          if (retryCount <= maxRetries) {
+            console.log(`Payment attempt ${retryCount} failed, retrying...`)
+            // Wait briefly before retrying
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+        }
+      }
+      
+      // If we get here, all retries failed
+      throw lastError
       
     } catch (error: any) {
       console.error("Error generating payment:", error)
+      
+      // Handle user rejection of transaction
+      if (error.message?.includes('User rejected')) {
+        toast.error("Transaction canceled by user")
+        return
+      }
       
       // Check for Intent not registered error
       if (error.message?.includes('Intent') && error.message?.includes('not registered')) {
         toast.error("This feature is not available for this payment account. The payment intent is not registered.")
       } else {
-        toast.error("Failed to generate payment. Please try again.")
+        toast.error(error.message || "Failed to generate payment. Please try again.")
       }
     } finally {
       setIsProcessing(false)
@@ -151,7 +195,7 @@ export default function AskPaymentPage() {
         ) : (
           <PaymentForm 
             onGeneratePayment={handleGeneratePayment} 
-            isProcessing={isProcessing}
+            isProcessing={isProcessing || !isClientReady}
             accountName={paymentAccount?.name} 
           />
         )}
