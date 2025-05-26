@@ -54,13 +54,14 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
   const [addressError, setAddressError] = useState<string | null>(null);
   const [recoveryAddresses, setRecoveryAddresses] = useState<Array<{ address: string, username?: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClientReady, setIsClientReady] = useState(false);
   const { setRecoveryAddress, getPaymentAccount } = usePaymentClient();
   const { refreshClient } = usePaymentStore();
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const suiClient = useSuiClient();
   const signTransaction = useSignTransaction();
 
-  // Fetch recovery addresses on component mount
+  // Fetch recovery addresses and ensure client is ready
   useEffect(() => {
     const fetchRecoveryAddresses = async () => {
       if (!userAddress) return;
@@ -78,9 +79,14 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
           
           setRecoveryAddresses(recoveryMemberList);
         }
+        
+        setIsClientReady(true);
       } catch (error) {
         console.error('Error fetching recovery addresses:', error);
         toast.error('Failed to load recovery addresses');
+        setIsClientReady(false);
+        // Retry after a delay
+        setTimeout(fetchRecoveryAddresses, 1000);
       } finally {
         setIsLoading(false);
       }
@@ -120,40 +126,79 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
       toast.error('Invalid SUI address format');
       return;
     }
+
+    if (!isClientReady) {
+      toast.error('Payment client is still initializing. Please wait a moment and try again.');
+      return;
+    }
     
     try {
       setIsSubmitting(true);
       
-      // Create a transaction block
-      const tx = new Transaction();
+      // Retry logic for setRecoveryAddress
+      let retryCount = 0;
+      const maxRetries = 2;
+      let lastError = null;
       
-      // Call setRecoveryAddress from the hook
-      await setRecoveryAddress(userAddress, accountId, tx, recoveryAddressString);
+      while (retryCount <= maxRetries) {
+        try {
+          // Create a transaction block
+          const tx = new Transaction();
+          
+          // Call setRecoveryAddress from the hook
+          await setRecoveryAddress(userAddress, accountId, tx, recoveryAddressString);
 
-      // Sign and execute the transaction
-      const result = await signAndExecute({
-        suiClient,
-        currentAccount: userAddress,
-        tx,
-        signTransaction,
-        toast,
-      });
+          // Sign and execute the transaction
+          const result = await signAndExecute({
+            suiClient,
+            currentAccount: userAddress,
+            tx,
+            signTransaction,
+            toast,
+          });
 
-      if (result.effects?.status?.status === 'success') {
-        // Reset client
-        refreshClient();
-        
-        setRecoveryAddressString('');
-        
-        // Add the new recovery address to the list
-        setRecoveryAddresses(prev => [...prev, { address: recoveryAddressString }]);
-        
-        toast.success('Recovery address added successfully');
-      } else {
-        toast.error('Failed to set recovery address');
+          if (result.effects?.status?.status === 'success') {
+            // Reset client
+            refreshClient();
+            
+            setRecoveryAddressString('');
+            
+            // Add the new recovery address to the list
+            setRecoveryAddresses(prev => [...prev, { address: recoveryAddressString }]);
+            
+            return; // Success, exit the function
+          } else {
+            throw new Error('Transaction failed');
+          }
+        } catch (error: any) {
+          lastError = error;
+          retryCount++;
+          
+          // If it's a user rejection, don't retry
+          if (error.message?.includes('User rejected')) {
+            throw error;
+          }
+          
+          if (retryCount <= maxRetries) {
+            console.log(`Recovery address attempt ${retryCount} failed, retrying...`);
+            // Wait briefly before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
       }
-    } catch (error) {
+      
+      // If we get here, all retries failed
+      throw lastError;
+      
+    } catch (error: any) {
       console.error('Error setting recovery address:', error);
+      
+      // Handle user rejection of transaction
+      if (error.message?.includes('User rejected')) {
+        toast.error('Transaction canceled by user');
+        return;
+      }
+      
       toast.error(error instanceof Error ? error.message : 'Failed to set recovery address');
     } finally {
       setIsSubmitting(false);
@@ -172,7 +217,7 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
           onChange={handleAddressChange}
           placeholder="Enter a Sui address (0x...)"
           className={`h-12 bg-transparent border-[#5E6164] rounded-lg text-white ${addressError ? 'border-amber-500' : ''}`}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isClientReady}
           required
         />
         {addressError && (
@@ -182,10 +227,10 @@ export default function RecoveryAddressForm({ accountId }: { accountId: string }
       
       <Button
         type="submit"
-        disabled={isSubmitting || !recoveryAddressString || addressError !== null}
+        disabled={isSubmitting || !recoveryAddressString || addressError !== null || !isClientReady}
         className="w-full h-12 mt-4 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-lg"
       >
-        {isSubmitting ? 'Setting up...' : 'Set Recovery Address'}
+        {isSubmitting ? 'Setting up...' : isClientReady ? 'Set Recovery Address' : 'Initializing...'}
       </Button>
     </form>
   );
