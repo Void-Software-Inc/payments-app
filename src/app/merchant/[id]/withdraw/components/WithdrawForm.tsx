@@ -42,6 +42,7 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isClientReady, setIsClientReady] = useState(false)
   const { refreshClient } = usePaymentStore()
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const [balanceInfo, setBalanceInfo] = useState<BalanceInfo>({
@@ -51,7 +52,7 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
   })
   const [amountError, setAmountError] = useState<string | null>(null);
   
-  // Fetch account balance information
+  // Fetch account balance information and ensure client is ready
   useEffect(() => {
     const fetchBalanceInfo = async () => {
       if (!currentAccount?.address || !accountId) return;
@@ -97,8 +98,13 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
           available: availableBalance
         });
         
+        setIsClientReady(true);
+        
       } catch (error) {
         console.error("Error fetching balance information:", error);
+        setIsClientReady(false);
+        // Retry after a delay
+        setTimeout(fetchBalanceInfo, 1000);
       }
     };
     
@@ -139,6 +145,11 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
 
   const handleInitiateWithdraw = async () => {
     if (!currentAccount?.address || !amount || !recipient) return
+
+    if (!isClientReady) {
+      toast.error("Payment client is still initializing. Please wait a moment and try again.");
+      return;
+    }
     
     try {
       setIsSubmitting(true);
@@ -162,59 +173,87 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
         return;
       }
       
-      // Create transaction with gas budget
-      const tx = new Transaction();
-      tx.setGasBudget(GAS_BUDGET);
-      
       const key = `withdraw_${Date.now()}`;
       
-      try {
-        // Add withdraw action to transaction
-        await initiateWithdraw(
-          currentAccount.address,
-          accountId,
-          tx,
-          key,
-          USDC_COIN_TYPE,
-          amountBigInt,
-          recipient
-        );
-        
-        // Execute transaction
-        const txResult = await signAndExecute({
-          suiClient,
-          currentAccount,
-          tx,
-          signTransaction,
-          options: {showEffects: true},
-          toast
-        }).catch(err => {
-          if (err.message?.includes('User rejected')) {
-            toast.error("Transaction canceled by user");
-            setIsSubmitting(false);
-            return null;
-          }
-          throw err;
-        });
-        
-        if (txResult) {
-          handleTxResult(txResult, toast);
+      // Retry logic for initiateWithdraw
+      let retryCount = 0;
+      const maxRetries = 2;
+      let lastError = null;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          // Create transaction with gas budget
+          const tx = new Transaction();
+          tx.setGasBudget(GAS_BUDGET);
           
-          // Clear form and reset client
-          setAmount("");
-          setRecipient("");
-          refreshClient();
-        } else {
-          setIsSubmitting(false);
+          // Add withdraw action to transaction
+          await initiateWithdraw(
+            currentAccount.address,
+            accountId,
+            tx,
+            key,
+            USDC_COIN_TYPE,
+            amountBigInt,
+            recipient
+          );
+          
+          // Execute transaction
+          const txResult = await signAndExecute({
+            suiClient,
+            currentAccount,
+            tx,
+            signTransaction,
+            options: {showEffects: true},
+            toast
+          }).catch(err => {
+            if (err.message?.includes('User rejected')) {
+              toast.error("Transaction canceled by user");
+              return null;
+            }
+            throw err;
+          });
+          
+          if (txResult) {
+            handleTxResult(txResult, toast);
+            
+            // Clear form and reset client
+            setAmount("");
+            setRecipient("");
+            refreshClient();
+            return; // Success, exit the function
+          } else {
+            return; // User rejected, exit gracefully
+          }
+        } catch (initiateError: any) {
+          lastError = initiateError;
+          retryCount++;
+          
+          // If it's a user rejection, don't retry
+          if (initiateError.message?.includes('User rejected')) {
+            throw initiateError;
+          }
+          
+          if (retryCount <= maxRetries) {
+            console.log(`Withdraw attempt ${retryCount} failed, retrying...`);
+            // Wait briefly before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
-      } catch (initiateError: any) {
-        console.error("Error initiating:", initiateError);
-        toast.error(initiateError.message || "Failed to initiate withdraw");
-        setIsSubmitting(false);
       }
-    } catch (error) {
+      
+      // If we get here, all retries failed
+      throw lastError;
+      
+    } catch (error: any) {
       console.error("Error initiating withdraw:", error);
-      toast.error("Failed to initiate withdrawal: " + ((error as Error).message || String(error)));
+      
+      // Handle user rejection of transaction
+      if (error.message?.includes('User rejected')) {
+        toast.error("Transaction canceled by user");
+        return;
+      }
+      
+      toast.error(error.message || "Failed to initiate withdraw");
     } finally {
       setIsSubmitting(false);
     }
@@ -263,6 +302,7 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
                 step="0.000001"
                 className={`bg-transparent border-zinc-700 text-white text-md ${amountError ? "border-red-500" : ""}`}
                 autoComplete="off"
+                disabled={!isClientReady}
               />
               {amountError && (
                 <Alert variant="destructive" className="bg-red-900/50 border-red-500/50 text-red-200">
@@ -283,15 +323,16 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
                 onChange={(e) => setRecipient(e.target.value)}
                 className="bg-transparent border-zinc-700 text-white text-md"
                 autoComplete="off"
+                disabled={!isClientReady}
               />
             </div>
             
             <Button 
               onClick={handleInitiateWithdraw}
-              disabled={!amount || !recipient || isSubmitting || !!amountError}
+              disabled={!amount || !recipient || isSubmitting || !!amountError || !isClientReady}
               className="w-full h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
             >
-              {isSubmitting ? "Processing..." : "Initiate Withdraw"}
+              {isSubmitting ? "Processing..." : isClientReady ? "Initiate Withdraw" : "Initializing..."}
             </Button>
           </div>
         </CardContent>
