@@ -219,5 +219,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  <strong>Built with ❤️ on Sui blockchain</strong>
+  <strong>Built with 🩵 on Sui blockchain</strong>
 </div>
