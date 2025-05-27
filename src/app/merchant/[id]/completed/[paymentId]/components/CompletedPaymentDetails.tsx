@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { QRCodeSVG } from 'qrcode.react'
 import { Copy, Check, ArrowUpDown, CirclePlus } from "lucide-react"
 import { useCurrentAccount } from "@mysten/dapp-kit"
-import { useIntentStore } from "@/store/useIntentStore"
+import { useCompletedIntents } from "@/hooks/useCompletedIntents"
 import { formatDistanceToNow } from "date-fns"
 
 interface CompletedPaymentDetailsProps {
@@ -17,41 +17,40 @@ interface CompletedPaymentDetailsProps {
 export function CompletedPaymentDetails({ merchantId, paymentId }: CompletedPaymentDetailsProps) {
   const router = useRouter()
   const currentAccount = useCurrentAccount()
-  const getDeletedIntent = useIntentStore((state) => state.getDeletedIntent)
+  const { completedIntents, isLoading: intentsLoading, getCompletedIntent } = useCompletedIntents(merchantId)
   const [isLoading, setIsLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [payment, setPayment] = useState<any>(null)
 
   useEffect(() => {
-    if (!currentAccount?.address) {
+    if (!currentAccount?.address || intentsLoading) {
       return;
     }
 
-    let isMounted = true;
-    const fetchPaymentDetails = async () => {
-      setIsLoading(true)
-      try {
-        const deletedIntent = getDeletedIntent(paymentId)
-        if (deletedIntent && isMounted) {
-          setPayment(deletedIntent)
-        }
-      } catch (error) {
-        console.error("Error fetching completed payment details:", error)
-        if (isMounted) {
-          setPayment(null)
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
-      }
+    const completedIntent = getCompletedIntent(paymentId)
+    if (completedIntent) {
+      // Transform database format to component format
+      setPayment({
+        intent: {
+          fields: {
+            description: completedIntent.description,
+            type_: completedIntent.type === 'withdrawal' ? 'WithdrawAndTransferIntent' : 'PaymentIntent',
+            key: paymentId,
+          },
+          args: {
+            amount: completedIntent.amount,
+            coinType: completedIntent.coinType,
+          },
+          account: completedIntent.merchantId,
+        },
+        deletedAt: new Date(completedIntent.executedAt).getTime(),
+        paymentId: completedIntent.intentId,
+      })
+    } else {
+      setPayment(null)
     }
-
-    fetchPaymentDetails()
-    return () => {
-      isMounted = false
-    }
-  }, [currentAccount?.address, paymentId, getDeletedIntent])
+    setIsLoading(false)
+  }, [currentAccount?.address, paymentId, completedIntents, intentsLoading, getCompletedIntent])
 
   const copyToClipboard = () => {
     if (payment?.intent?.fields?.key) {

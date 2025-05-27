@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useIntentStore } from "@/store/useIntentStore"
-import { Intent } from "@account.tech/core"
+import { useCompletedIntents } from "@/hooks/useCompletedIntents"
 import { useRouter } from "next/navigation"
 import { CirclePlus, Clock, X, Search, ArrowUpDown } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { CompletedIntent } from '@/generated/prisma'
 
 interface CompletedPaymentProps {
   merchantId: string
@@ -17,53 +17,32 @@ type StatusFilter = 'all' | 'completed';
 
 export function AllCompletedPayments({ merchantId }: CompletedPaymentProps) {
   const router = useRouter()
-  const [completedPayments, setCompletedPayments] = useState<Array<{
-    intent: Intent;
-    deletedAt: number;
-    paymentId: string;
-  }>>([])
-  const [filteredPayments, setFilteredPayments] = useState<Array<{
-    intent: Intent;
-    deletedAt: number;
-    paymentId: string;
-  }>>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [filteredPayments, setFilteredPayments] = useState<CompletedIntent[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const { deletedIntents } = useIntentStore()
-
-  useEffect(() => {
-    setIsLoading(true)
-    // Filter deleted intents for the current merchant
-    const merchantCompletedPayments = deletedIntents.filter(
-      (item) => item.intent.account === merchantId
-    )
-    setCompletedPayments(merchantCompletedPayments)
-    setFilteredPayments(merchantCompletedPayments)
-    setIsLoading(false)
-  }, [deletedIntents, merchantId])
+  const { completedIntents, isLoading } = useCompletedIntents(merchantId)
 
   // Filter payments when search term changes
   useEffect(() => {
-    if (completedPayments.length === 0) {
+    if (completedIntents.length === 0) {
       setFilteredPayments([]);
       return;
     }
 
-    let filtered = [...completedPayments];
+    let filtered = [...completedIntents];
 
     // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(payment => 
-        payment.intent.fields.description?.toLowerCase().includes(term) || 
-        payment.intent.fields.creator?.toLowerCase().includes(term) ||
-        payment.paymentId.toLowerCase().includes(term)
+        payment.description?.toLowerCase().includes(term) || 
+        payment.sender?.toLowerCase().includes(term) ||
+        payment.intentId.toLowerCase().includes(term)
       );
     }
 
     setFilteredPayments(filtered);
-  }, [searchTerm, completedPayments]);
+  }, [searchTerm, completedIntents]);
 
   // Format amount for display
   const formatAmount = (amount: string, coinType: string): string => {
@@ -120,7 +99,7 @@ export function AllCompletedPayments({ merchantId }: CompletedPaymentProps) {
     )
   }
 
-  if (completedPayments.length === 0) {
+  if (completedIntents.length === 0) {
     return (
       <div className="w-full lg:w-[70%] mx-auto mb-4 pt-16">
         <div className="bg-[#2A2A2F] rounded-lg p-6">
@@ -141,18 +120,18 @@ export function AllCompletedPayments({ merchantId }: CompletedPaymentProps) {
       ) : (
         filteredPayments.map((payment, index) => (
           <div 
-            key={payment.paymentId}
+            key={payment.intentId}
             className={`bg-[#2A2A2F] border-b-2 border-[#3B3C3F] hover:bg-[#33333A] transition-colors cursor-pointer p-3 ${
               index === 0 ? 'rounded-t-lg' : ''
             } ${
               index === filteredPayments.length - 1 ? 'rounded-b-lg border-b-0' : ''
             }`}
-            onClick={() => router.push(`/merchant/${merchantId}/completed/${payment.paymentId}`)}
+            onClick={() => router.push(`/merchant/${merchantId}/completed/${payment.intentId}`)}
           >
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-10 h-14 mr-2 rounded-full flex items-center justify-center">
-                  {payment.intent.fields.type_?.includes('WithdrawAndTransferIntent') ? (
+                  {payment.type === 'withdrawal' ? (
                     <ArrowUpDown className="size-7 text-white" />
                   ) : (
                     <CirclePlus className="size-7 text-white" />
@@ -163,16 +142,16 @@ export function AllCompletedPayments({ merchantId }: CompletedPaymentProps) {
                 <div className="flex justify-between">
                   <div className="min-w-[150px] max-w-[150px] md:min-w-[250px] md:max-w-[250px]">
                     <h3 className="text-md text-white truncate">
-                      {payment.intent.fields.description || 'Payment'}
+                      {payment.description || 'Payment'}
                     </h3>
                     <p className="text-sm text-gray-400">
-                      {formatDistanceToNow(new Date(payment.deletedAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(payment.executedAt), { addSuffix: true })}
                     </p>
                   </div>
                   <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
                     <p className="text-lg font-bold text-white truncate">
-                      {payment.intent.fields.type_?.includes('WithdrawAndTransferIntent') ? '- ' : '+ '}
-                      {formatAmount((payment.intent.args as any).amount, (payment.intent.args as any).coinType)}
+                      {payment.type === 'withdrawal' ? '- ' : '+ '}
+                      {formatAmount(payment.amount, payment.coinType)}
                     </p>
                   </div>
                 </div>

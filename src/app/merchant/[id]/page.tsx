@@ -47,7 +47,7 @@ export default function PaymentAccountPage() {
         
         // Fetch coins for the payment account
         if (fetchingPaymentAccount) {
-          await fetchAccountCoins(fetchingPaymentAccount.id);
+          await fetchAccountCoins(fetchingPaymentAccount);
         }
       } catch (error) {
         console.error("Error initializing payment account:", error);
@@ -82,11 +82,21 @@ export default function PaymentAccountPage() {
   }, [currentAccount?.address, accountId]);
 
   // Fetch coins owned by the payment account
-  const fetchAccountCoins = async (accountId: string) => {
+  const fetchAccountCoins = async (paymentAccount: Payment) => {
     try {
+      // The payment account ID is actually the Sui object address that owns the coins
+      const accountAddress = paymentAccount.id;
+      
+      if (!accountAddress) {
+        console.error("Payment account ID not found");
+        return;
+      }
+      
+      console.log("Fetching coins for payment account address:", accountAddress);
+      
       // Get all coins owned by the payment account
       const allCoinsResponse = await suiClient.getAllCoins({
-        owner: accountId
+        owner: accountAddress
       });
       
       // Calculate totals for SUI and USDC

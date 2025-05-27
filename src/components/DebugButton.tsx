@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { usePaymentStore } from "@/store/usePaymentStore";
-import { useIntentStore } from "@/store/useIntentStore";
+import { useCompletedIntents } from "@/hooks/useCompletedIntents";
 import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
 import { useEffect, useState } from "react";
 
@@ -11,7 +11,7 @@ export function DebugButton() {
   const suiClient = useSuiClient();
   const { client } = usePaymentStore();
   const [walletObjects, setWalletObjects] = useState<any[]>([]);
-  const { deletedIntents } = useIntentStore();
+  const { completedIntents } = useCompletedIntents();
 
   // Add useEffect for initial fetch
   useEffect(() => {
@@ -36,7 +36,7 @@ export function DebugButton() {
     console.log(walletObjects);
     console.log('Full Client:', client);
     console.log('=====================');
-    console.log('Deleted Intents:', deletedIntents);
+    console.log('Completed Intents:', completedIntents);
   };
 
   return (
