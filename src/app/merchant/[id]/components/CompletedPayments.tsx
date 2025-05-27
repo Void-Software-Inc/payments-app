@@ -104,7 +104,7 @@ export function CompletedPayments({ merchantId, limit }: CompletedPaymentsProps)
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xl font-bold text-white">Completed</h2>
+        <h2 className="text-xl font-bold text-white">History</h2>
         <Link 
           href={`/merchant/${merchantId}/completed`}
           className="text-[#77BBD9] hover:text-[#84d0f0] text-lg"

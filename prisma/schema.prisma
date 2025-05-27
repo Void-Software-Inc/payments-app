@@ -1,0 +1,37 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CompletedIntent {
+  id          String   @id @default(cuid())
+  intentId    String   @unique // The original intent ID from blockchain
+  walletAddress String // The wallet address that owns this intent
+  merchantId  String   // The merchant/account ID
+  type        String   // "payment" or "withdrawal"
+  amount      String   // Amount in smallest unit (bigint as string)
+  coinType    String   // The coin type (USDC, SUI, etc.)
+  description String?  // Optional description
+  sender      String?  // Sender address (for payments)
+  recipient   String?  // Recipient address (for withdrawals)
+  tipAmount   String?  // Tip amount if any (bigint as string)
+  txHash      String?  // Transaction hash when executed
+  createdAt   DateTime @default(now())
+  executedAt  DateTime @default(now())
+  
+  @@map("completed_intents")
+  @@index([walletAddress])
+  @@index([merchantId])
+  @@index([intentId])
+}

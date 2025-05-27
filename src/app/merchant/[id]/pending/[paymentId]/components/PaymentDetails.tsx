@@ -14,6 +14,7 @@ import { toast } from "sonner"
 import { signAndExecute, handleTxResult } from "@/utils/Tx"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
+import { useCompletedIntents } from "@/hooks/useCompletedIntents"
 
 interface PaymentDetailsProps {
   merchantId: string
@@ -28,6 +29,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
+  const { saveCompletedIntent } = useCompletedIntents()
   
   const [payment, setPayment] = useState<PendingPayment | null>(null)
   const [intentStatus, setIntentStatus] = useState<IntentStatus | null>(null)
@@ -258,6 +260,25 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
       
       if (txResult) {
         handleTxResult(txResult, toast);
+        
+        // Save completed withdrawal to database
+        try {
+          await saveCompletedIntent({
+            intentId: payment.intentKey,
+            walletAddress: currentAccount.address,
+            merchantId: merchantId,
+            type: 'withdrawal',
+            amount: payment.amount,
+            coinType: payment.coinType,
+            description: payment.description || 'Withdrawal',
+            recipient: currentAccount.address,
+            txHash: txResult.digest,
+          });
+        } catch (dbError) {
+          console.warn('Failed to save withdrawal to database:', dbError);
+          // Don't fail the withdrawal if database save fails
+        }
+        
         refreshClient();
         router.push(`/merchant/${merchantId}/pending`);
       }
