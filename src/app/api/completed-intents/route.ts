@@ -11,38 +11,42 @@ export async function GET(request: NextRequest) {
     const signature = searchParams.get('signature')
     const publicKey = searchParams.get('publicKey')
 
-    if (!walletAddress || !message || !signature || !publicKey) {
+    if (!walletAddress) {
       return NextResponse.json(
-        { error: 'Missing required authentication parameters' },
+        { error: 'Wallet address is required' },
         { status: 400 }
       )
     }
 
-    // Verify message is recent and valid
-    if (!isMessageValid(message)) {
-      return NextResponse.json(
-        { error: 'Message expired or invalid' },
-        { status: 401 }
-      )
-    }
+    // If authentication parameters are provided, verify them
+    if (message && signature && publicKey) {
+      // Verify message is recent and valid
+      if (!isMessageValid(message)) {
+        return NextResponse.json(
+          { error: 'Message expired or invalid' },
+          { status: 401 }
+        )
+      }
 
-    // Verify wallet address matches message
-    const messageWallet = extractWalletFromMessage(message)
-    if (messageWallet !== walletAddress) {
-      return NextResponse.json(
-        { error: 'Wallet address mismatch' },
-        { status: 401 }
-      )
-    }
+      // Verify wallet address matches message
+      const messageWallet = extractWalletFromMessage(message)
+      if (messageWallet !== walletAddress) {
+        return NextResponse.json(
+          { error: 'Wallet address mismatch' },
+          { status: 401 }
+        )
+      }
 
-    // Verify signature
-    const isValidSignature = await verifyWalletSignature(message, signature, publicKey)
-    if (!isValidSignature) {
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      )
+      // Verify signature
+      const isValidSignature = await verifyWalletSignature(message, signature, publicKey)
+      if (!isValidSignature) {
+        return NextResponse.json(
+          { error: 'Invalid signature' },
+          { status: 401 }
+        )
+      }
     }
+    // If no authentication parameters, allow read access for the wallet owner
 
     // Get completed intents
     const intents = await getCompletedIntents(walletAddress, merchantId || undefined)

@@ -29,7 +29,7 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
   const refreshCounter = usePaymentStore(state => state.refreshCounter);
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
-  const { saveCompletedIntent } = useCompletedIntents()
+  const { addCompletedIntent } = useCompletedIntents()
   
   const [payment, setPayment] = useState<PendingPayment | null>(null)
   const [intentStatus, setIntentStatus] = useState<IntentStatus | null>(null)
@@ -263,17 +263,9 @@ export function PaymentDetails({ merchantId, paymentId }: PaymentDetailsProps) {
         
         // Save completed withdrawal to database
         try {
-          await saveCompletedIntent({
-            intentId: payment.intentKey,
-            walletAddress: currentAccount.address,
-            merchantId: merchantId,
-            type: 'withdrawal',
-            amount: payment.amount,
-            coinType: payment.coinType,
-            description: payment.description || 'Withdrawal',
-            recipient: currentAccount.address,
-            txHash: txResult.digest,
-          });
+          if (payment.rawIntent) {
+            await addCompletedIntent(payment.rawIntent, payment.intentKey, txResult.digest);
+          }
         } catch (dbError) {
           console.warn('Failed to save withdrawal to database:', dbError);
           // Don't fail the withdrawal if database save fails

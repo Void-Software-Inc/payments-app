@@ -26,7 +26,7 @@ export default function MerchantPage() {
   
   return (
     <div className="w-full min-h-screen bg-[#212229]">
-      <main className="w-dvw h-dvh container mx-auto px-4 pt-6 pb-8 max-w-2xl">
+      <main className="w-full min-h-screen container mx-auto px-4 pt-6 pb-8 max-w-2xl">
         <div className="flex justify-center items-center w-full mb-6">
             <h1 className="text-2xl font-bold text-white text-center">
               Merchant Accounts

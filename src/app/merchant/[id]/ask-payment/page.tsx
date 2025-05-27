@@ -52,7 +52,12 @@ export default function AskPaymentPage() {
         // Now fetch the full payment account details if needed
         if (!matchingAccount) {
           const account = await getPaymentAccount(currentAccount.address, paymentAccountId)
-          setPaymentAccount(account)
+          // Extract name from metadata and create a consistent object structure
+          const accountName = account?.metadata?.find(item => item.key === "name")?.value || "Unnamed Account"
+          setPaymentAccount({ 
+            ...account,
+            name: accountName
+          })
         }
         
         setPageError(null)

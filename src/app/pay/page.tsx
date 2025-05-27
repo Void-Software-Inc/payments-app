@@ -9,7 +9,7 @@ import { signAndExecute, handleTxResult } from "@/utils/Tx"
 import { toast } from "sonner"
 import { useState } from "react"
 import { usePaymentStore } from "@/store/usePaymentStore"
-import { useIntentStore } from "@/store/useIntentStore"
+import { useCompletedIntents } from "@/hooks/useCompletedIntents"
 import { Button } from "@/components/ui/button"
 import { PageTitle } from "../merchant/[id]/ask-payment/components/PageTitle"
 import { PayCard } from "./components/PayCard"
@@ -24,7 +24,7 @@ export default function PayPage() {
   
   const { makePayment, getIntent } = usePaymentClient()
   const { refreshClient } = usePaymentStore()
-  const { addDeletedIntent } = useIntentStore()
+  const { addCompletedIntent } = useCompletedIntents()
   const currentAccount = useCurrentAccount()
   const signTransaction = useSignTransaction()
   const suiClient = useSuiClient()
@@ -139,7 +139,7 @@ export default function PayPage() {
       // Store the intent before refreshing client
       if (intentDetails) {
         console.log("Storing intent before refresh:", sanitizedPaymentId);
-        addDeletedIntent(intentDetails, sanitizedPaymentId);
+        await addCompletedIntent(intentDetails, sanitizedPaymentId, txResult.digest);
       }
       
       refreshClient();

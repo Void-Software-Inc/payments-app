@@ -1,27 +1,21 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useCurrentAccount, useSignPersonalMessage } from '@mysten/dapp-kit'
+import { Intent } from "@account.tech/core"
+import { CompletedIntent } from '@/generated/prisma'
 import { createAuthMessage } from '@/lib/auth'
-import { CreateIntentData } from '@/services/intents'
 
-export interface CompletedIntent {
-  id: string
-  intentId: string
-  walletAddress: string
-  merchantId: string
-  type: string
-  amount: string
-  coinType: string
-  description?: string
-  sender?: string
-  recipient?: string
-  tipAmount?: string
-  txHash?: string
-  createdAt: string
-  executedAt: string
+interface UseCompletedIntentsReturn {
+  completedIntents: CompletedIntent[]
+  isLoading: boolean
+  error: string | null
+  addCompletedIntent: (intent: Intent, paymentId: string, txHash?: string) => Promise<void>
+  getCompletedIntent: (paymentId: string) => CompletedIntent | undefined
+  refreshIntents: () => Promise<void>
 }
 
-export function useCompletedIntents() {
-  const [isLoading, setIsLoading] = useState(false)
+export function useCompletedIntents(merchantId?: string): UseCompletedIntentsReturn {
+  const [completedIntents, setCompletedIntents] = useState<CompletedIntent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const currentAccount = useCurrentAccount()
   const { mutateAsync: signPersonalMessage } = useSignPersonalMessage()
@@ -51,12 +45,79 @@ export function useCompletedIntents() {
     }
   }, [currentAccount, signPersonalMessage])
 
-  const saveCompletedIntent = useCallback(async (intentData: CreateIntentData) => {
-    setIsLoading(true)
-    setError(null)
+  const fetchCompletedIntents = useCallback(async () => {
+    if (!currentAccount?.address) {
+      setCompletedIntents([])
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // For now, skip authentication for read operations to avoid wallet popup issues
+      const authParams = {
+        walletAddress: currentAccount.address,
+        message: '',
+        signature: '',
+        publicKey: ''
+      }
+
+      const params = new URLSearchParams(authParams)
+
+      if (merchantId) {
+        params.append('merchantId', merchantId)
+      }
+
+      console.log('Fetching completed intents with params:', params.toString())
+      
+      const response = await fetch(`/api/completed-intents?${params}`)
+      
+      console.log('Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Error:', errorText)
+        throw new Error(`Failed to fetch completed intents: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log('Received data:', data)
+      setCompletedIntents(data.intents || [])
+    } catch (err) {
+      console.error('Error fetching completed intents:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch completed intents')
+      setCompletedIntents([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentAccount?.address, merchantId, createAuthParams])
+
+  const addCompletedIntent = useCallback(async (intent: Intent, paymentId: string, txHash?: string) => {
+    if (!currentAccount?.address) {
+      throw new Error('No wallet connected')
+    }
 
     try {
       const authParams = await createAuthParams('save-intent')
+
+      // Determine if this is a withdrawal based on intent type
+      const isWithdrawal = intent.fields?.type_?.includes('WithdrawAndTransferIntent')
+      
+      const intentData = {
+        intentId: paymentId,
+        walletAddress: currentAccount.address,
+        merchantId: intent.account || merchantId || '',
+        type: isWithdrawal ? 'withdrawal' : 'payment',
+        amount: (intent.args as any)?.amount?.toString() || '0',
+        coinType: (intent.args as any)?.coinType || '',
+        description: intent.fields?.description || '',
+        sender: intent.fields?.creator || currentAccount.address,
+        recipient: isWithdrawal ? (intent.args as any)?.recipient : intent.account,
+        tipAmount: (intent.args as any)?.tip?.toString() || '0',
+        txHash,
+      }
 
       const response = await fetch('/api/completed-intents', {
         method: 'POST',
@@ -70,83 +131,35 @@ export function useCompletedIntents() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save intent')
+        throw new Error(`Failed to save completed intent: ${response.statusText}`)
       }
 
-      const { intent } = await response.json()
-      return intent as CompletedIntent
+      // Refresh the intents list
+      await fetchCompletedIntents()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      setError(errorMessage)
+      console.error('Error adding completed intent:', err)
       throw err
-    } finally {
-      setIsLoading(false)
     }
-  }, [createAuthParams])
+  }, [currentAccount?.address, merchantId, createAuthParams, fetchCompletedIntents])
 
-  const getCompletedIntents = useCallback(async (merchantId?: string) => {
-    setIsLoading(true)
-    setError(null)
+  const getCompletedIntent = useCallback((paymentId: string) => {
+    return completedIntents.find(intent => intent.intentId === paymentId)
+  }, [completedIntents])
 
-    try {
-      const authParams = await createAuthParams('get-intents')
-      
-      const params = new URLSearchParams({
-        ...authParams,
-        ...(merchantId && { merchantId }),
-      })
+  const refreshIntents = useCallback(async () => {
+    await fetchCompletedIntents()
+  }, [fetchCompletedIntents])
 
-      const response = await fetch(`/api/completed-intents?${params}`)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch intents')
-      }
-
-      const { intents } = await response.json()
-      return intents as CompletedIntent[]
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [createAuthParams])
-
-  const getCompletedIntent = useCallback(async (id: string) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const authParams = await createAuthParams('get-intent')
-      
-      const params = new URLSearchParams(authParams)
-
-      const response = await fetch(`/api/completed-intents/${id}?${params}`)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch intent')
-      }
-
-      const { intent } = await response.json()
-      return intent as CompletedIntent
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [createAuthParams])
+  useEffect(() => {
+    fetchCompletedIntents()
+  }, [fetchCompletedIntents])
 
   return {
-    saveCompletedIntent,
-    getCompletedIntents,
-    getCompletedIntent,
+    completedIntents,
     isLoading,
     error,
+    addCompletedIntent,
+    getCompletedIntent,
+    refreshIntents,
   }
 } 
