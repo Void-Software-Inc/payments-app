@@ -33,7 +33,7 @@ export default function Home() {
               trigger={
                 <Button 
                   variant="outline" 
-                  className="rounded-full bg-pink-200 hover:bg-[#6BAAC8] text-white border-none font-medium w-full h-12"
+                  className="rounded-full bg-[#78BCDB] hover:bg-[#6BAAC8] text-white border-none font-medium w-full h-12"
                 >
                   <Wallet className="size-4" />
                   Connect Wallet

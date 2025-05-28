@@ -8,7 +8,7 @@ interface UseCompletedIntentsReturn {
   completedIntents: CompletedIntent[]
   isLoading: boolean
   error: string | null
-  addCompletedIntent: (intent: Intent, paymentId: string, txHash?: string) => Promise<void>
+  addCompletedIntent: (intent: Intent, paymentId: string, txHash?: string, displayData?: { amount: string, coinType: string, recipient?: string }) => Promise<void>
   getCompletedIntent: (paymentId: string) => CompletedIntent | undefined
   refreshIntents: () => Promise<void>
 }
@@ -94,7 +94,7 @@ export function useCompletedIntents(merchantId?: string): UseCompletedIntentsRet
     }
   }, [currentAccount?.address, merchantId, createAuthParams])
 
-  const addCompletedIntent = useCallback(async (intent: Intent, paymentId: string, txHash?: string) => {
+  const addCompletedIntent = useCallback(async (intent: Intent, paymentId: string, txHash?: string, displayData?: { amount: string, coinType: string, recipient?: string }) => {
     if (!currentAccount?.address) {
       throw new Error('No wallet connected')
     }
