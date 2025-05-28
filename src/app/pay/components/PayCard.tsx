@@ -15,7 +15,6 @@ import { getCoinDecimals } from "@/utils/helpers";
 import { usePaymentClient } from "@/hooks/usePaymentClient";
 import Image from "next/image";
 import { QrCodeScanner } from "./QrCodeScanner";
-import { useCompletedIntents } from "@/hooks/useCompletedIntents";
 
 // USDC coin type - ensure this matches the BalanceCard.tsx definition
 const USDC_COIN_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC";
@@ -43,7 +42,6 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
   const { getForeignIntent } = usePaymentClient();
-  const { saveCompletedIntent } = useCompletedIntents();
   
   // Fetch balances when the component loads
   useEffect(() => {
@@ -230,33 +228,6 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
       
       // Call the onMakePayment function with the payment ID and tip amount
       await onMakePayment(actualPaymentId, tipInSmallestUnit);
-      
-      // Save completed payment to database
-      try {
-        // Extract merchant ID from payment link
-        let merchantId = '';
-        if (paymentId.includes('/')) {
-          const parts = paymentId.split('/');
-          if (parts.length >= 2) {
-            merchantId = parts[0].trim();
-          }
-        }
-
-        await saveCompletedIntent({
-          intentId: actualPaymentId,
-          walletAddress: currentAccount.address,
-          merchantId: merchantId,
-          type: 'payment',
-          amount: paymentAmount ? (parseFloat(paymentAmount) * 1_000_000).toString() : '0',
-          coinType: USDC_COIN_TYPE,
-          description: paymentDescription || 'Payment',
-          sender: currentAccount.address,
-          tipAmount: tipInSmallestUnit.toString(),
-        });
-      } catch (dbError) {
-        console.warn('Failed to save payment to database:', dbError);
-        // Don't fail the payment if database save fails
-      }
       
       // Reset form after successful payment
       setPaymentId("");
