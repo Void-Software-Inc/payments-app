@@ -188,11 +188,11 @@ export function PendingPayments({ merchantId, limit }: PendingPaymentsProps) {
                 <div className="flex-1">
                   <div className="flex justify-between">
                     <div className="min-w-[170px] max-w-[170px] md:min-w-[250px] md:max-w-[250px]">
-                      <h3 className="text-md text-white truncate">{payment.rawIntent?.fields?.description || payment.description || 'Payment'}</h3>
+                      <h3 className="text-md text-white truncate">{payment.rawIntent?.fields?.description || payment.description || (payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') ? 'Withdraw' : 'Payment')}</h3>
                       <p className="text-sm text-gray-400">{payment.date} - {payment.time}</p>
                     </div>
                     <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
-                      <p className="text-lg font-bold text-white truncate">
+                      <p className={`text-lg font-bold truncate ${payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') ? 'text-red-400' : 'text-white'}`}>
                         {payment.rawIntent?.fields?.type_?.includes('WithdrawAndTransferIntent') ? '- ' : '+ '}
                         {formatAmount(payment.amount, payment.coinType)}
                       </p>
