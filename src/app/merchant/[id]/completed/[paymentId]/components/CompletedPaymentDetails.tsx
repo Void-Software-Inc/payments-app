@@ -45,6 +45,9 @@ export function CompletedPaymentDetails({ merchantId, paymentId }: CompletedPaym
         },
         deletedAt: new Date(completedIntent.executedAt).getTime(),
         paymentId: completedIntent.intentId,
+        recipient: completedIntent.recipient,
+        sender: completedIntent.sender,
+        tipAmount: completedIntent.tipAmount,
       })
     } else {
       setPayment(null)
@@ -148,6 +151,42 @@ export function CompletedPaymentDetails({ merchantId, paymentId }: CompletedPaym
           {isWithdrawal ? '- ' : '+ '}
           {formatAmount((payment.intent.args as any).amount, (payment.intent.args as any).coinType)}
         </p>
+        
+        {payment.tipAmount && payment.tipAmount !== '0' && (
+          <>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-md text-gray-400">Tip Amount</p>
+            </div>
+            <p className="text-white text-md mb-6">
+              + {formatAmount(payment.tipAmount, (payment.intent.args as any).coinType)}
+            </p>
+          </>
+        )}
+        
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-md text-gray-400">{isWithdrawal ? 'Recipient' : 'Merchant'}</p>
+        </div>
+        <p className="text-white text-md font-mono text-sm break-all mb-6">
+          {payment.recipient ? (
+            payment.recipient.length > 20 ? 
+              `${payment.recipient.slice(0, 10)}...${payment.recipient.slice(-10)}` : 
+              payment.recipient
+          ) : 'Not available'}
+        </p>
+        
+        {payment.sender && payment.sender !== currentAccount?.address && (
+          <>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-md text-gray-400">Sender</p>
+            </div>
+            <p className="text-white text-md font-mono text-sm break-all mb-6">
+              {payment.sender.length > 20 ? 
+                `${payment.sender.slice(0, 10)}...${payment.sender.slice(-10)}` : 
+                payment.sender
+              }
+            </p>
+          </>
+        )}
         
         <div className="flex items-center justify-between mb-1">
           <p className="text-md text-gray-400">Status</p>
