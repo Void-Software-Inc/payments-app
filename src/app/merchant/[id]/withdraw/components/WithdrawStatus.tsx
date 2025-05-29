@@ -53,7 +53,7 @@ export function WithdrawStatus({ isOwner, account }: WithdrawStatusProps) {
 
   return (
     <Card className="bg-gray-800/50 border border-gray-700 shadow-lg w-full mb-4">
-      <CardContent className="pt-6 flex items-center">
+      <CardContent className="flex items-center">
         <AlertTriangle className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0" />
         <div>
           <p className="text-gray-300">
