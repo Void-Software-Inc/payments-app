@@ -37,11 +37,7 @@ export async function getCompletedIntents(
   walletAddress: string,
   merchantId?: string
 ): Promise<CompletedIntent[]> {
-  const where: any = { walletAddress }
-  
-  if (merchantId) {
-    where.merchantId = merchantId
-  }
+  const where: any = merchantId ? { merchantId } : { walletAddress }
   
   return await prisma.completedIntent.findMany({
     where,

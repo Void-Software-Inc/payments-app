@@ -51,6 +51,7 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
     available: BigInt(0)
   })
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [recipientError, setRecipientError] = useState<string | null>(null);
   
   // Fetch account balance information and ensure client is ready
   useEffect(() => {
@@ -136,6 +137,24 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
     }
   };
 
+  // Add recipient validation function
+  const validateRecipient = (address: string) => {
+    if (!address) {
+      setRecipientError(null);
+      return;
+    }
+
+    // Check if it's a valid Sui address format (starts with 0x and is 64 hex chars long after 0x)
+    const suiAddressRegex = /^0x[a-fA-F0-9]{64}$/;
+    
+    if (!suiAddressRegex.test(address)) {
+      setRecipientError("Invalid Sui address format. Must be 0x followed by 64 hexadecimal characters.");
+      return;
+    }
+
+    setRecipientError(null);
+  };
+
   // Update amount change handler
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -143,11 +162,29 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
     validateAmount(value);
   };
 
+  // Add recipient change handler
+  const handleRecipientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim();
+    setRecipient(value);
+    validateRecipient(value);
+  };
+
   const handleInitiateWithdraw = async () => {
     if (!currentAccount?.address || !amount || !recipient) return
 
     if (!isClientReady) {
       toast.error("Payment client is still initializing. Please wait a moment and try again.");
+      return;
+    }
+
+    // Additional validation before submitting
+    if (amountError) {
+      toast.error("Please fix the amount error before submitting.");
+      return;
+    }
+
+    if (recipientError) {
+      toast.error("Please enter a valid Sui address.");
       return;
     }
     
@@ -233,6 +270,12 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
             throw initiateError;
           }
           
+          // Handle specific address validation errors
+          if (initiateError.message?.includes('Invalid Sui address')) {
+            toast.error("Invalid recipient address. Please enter a valid Sui address starting with 0x.");
+            return; // Don't retry for validation errors
+          }
+          
           if (retryCount <= maxRetries) {
             console.log(`Withdraw attempt ${retryCount} failed, retrying...`);
             // Wait briefly before retrying
@@ -250,6 +293,12 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
       // Handle user rejection of transaction
       if (error.message?.includes('User rejected')) {
         toast.error("Transaction canceled by user");
+        return;
+      }
+
+      // Handle specific address validation errors
+      if (error.message?.includes('Invalid Sui address')) {
+        toast.error("Invalid recipient address. Please enter a valid Sui address starting with 0x.");
         return;
       }
       
@@ -320,16 +369,24 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
                 id="recipient"
                 placeholder="0x..."
                 value={recipient}
-                onChange={(e) => setRecipient(e.target.value)}
-                className="bg-transparent border-zinc-700 text-white text-md"
+                onChange={handleRecipientChange}
+                className={`bg-transparent border-zinc-700 text-white text-md ${recipientError ? "border-red-500" : ""}`}
                 autoComplete="off"
                 disabled={!isClientReady}
               />
+              {recipientError && (
+                <Alert variant="destructive" className="bg-red-900/50 border-red-500/50 text-red-200">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {recipientError}
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             
             <Button 
               onClick={handleInitiateWithdraw}
-              disabled={!amount || !recipient || isSubmitting || !!amountError || !isClientReady}
+              disabled={!amount || !recipient || isSubmitting || !!amountError || !!recipientError || !isClientReady}
               className="w-full h-13 rounded-full bg-[#78BCDB] hover:bg-[#68ACCC] text-white font-medium text-md"
             >
               {isSubmitting ? "Processing..." : isClientReady ? "Initiate Withdraw" : "Initializing..."}

@@ -113,13 +113,13 @@ export function CompletedPayments({ merchantId, limit }: CompletedPaymentsProps)
                 <div className="flex-1">
                   <div className="flex justify-between">
                     <div className="min-w-[170px] max-w-[170px] md:min-w-[250px] md:max-w-[250px]">
-                      <h3 className="text-md text-white truncate">{payment.description || 'Payment'}</h3>
+                      <h3 className="text-md text-white truncate">{payment.description || (payment.type === 'withdrawal' ? 'Withdraw' : 'Payment')}</h3>
                       <p className="text-sm text-gray-400">
                         {new Date(payment.executedAt).toLocaleDateString()} - {new Date(payment.executedAt).toLocaleTimeString()}
                       </p>
                     </div>
                     <div className="text-right min-w-[98px] max-w-[98px] md:min-w-[250px] md:max-w-[250px]">
-                      <p className="text-lg font-bold text-white truncate">
+                      <p className={`text-lg font-bold truncate ${payment.type === 'withdrawal' ? 'text-red-400' : 'text-white'}`}>
                         {payment.type === 'withdrawal' ? '- ' : '+ '}
                         {formatAmount(payment.amount, payment.coinType)}
                       </p>
