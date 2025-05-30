@@ -44,10 +44,11 @@ export default function RootLayout({
         <div className="relative z-10">
           <Navbar />
           {children}
-        
+          <DebugButton />
           <Toaster richColors/>
         </div>
       </Providers>
+      
       </body>
     </html>
   );

@@ -24,16 +24,17 @@ export default function Home() {
               height={55} 
               priority
               className=""
+              style={{ width: '60px', height: '55px' }}
             />
             <h1 className="text-[70px] font-base text-white">Drift</h1>
           </div>
           
-          <div className="flex flex-col gap-4 w-[194px]">   
+          <div className="flex flex-col gap-4 w-[194px] pt-20">   
             <ConnectModal
               trigger={
                 <Button 
                   variant="outline" 
-                  className="rounded-full bg-[#78BCDB] hover:bg-[#6BAAC8] text-white border-none font-medium w-full h-12"
+                  className="rounded-full bg-[#78BCDB] hover:bg-[#6BAAC8] text-white border-none font-medium w-full text-md h-13"
                 >
                   <Wallet className="size-4" />
                   Connect Wallet
@@ -43,7 +44,7 @@ export default function Home() {
           </div>
         </div>
         
-        <div className="fixed bottom-8 flex flex-col items-center">
+        <div className="fixed bottom-14 flex flex-col items-center">
           <p className="text-sm text-white">Powered by account.tech</p>
           <Image 
             src="/light.svg" 
@@ -51,6 +52,7 @@ export default function Home() {
             width={170} 
             height={4} 
             className="mt-1"
+            style={{ width: '170px', height: '4px' }}
           />
         </div>
       </div>
