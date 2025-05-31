@@ -27,7 +27,7 @@ export async function createCompletedIntent(data: CreateIntentData): Promise<Com
       description: data.description,
       sender: data.sender,
       recipient: data.recipient,
-      tipAmount: data.tipAmount,
+      tipAmount: data.tipAmount || '0',
       txHash: data.txHash,
     },
   })

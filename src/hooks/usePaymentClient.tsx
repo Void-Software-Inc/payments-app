@@ -567,8 +567,7 @@ export function usePaymentClient() {
   const makePayment = async (
     userAddr: string, 
     tx: Transaction, 
-    paymentId: string, 
-    tipAmount?: bigint
+    paymentId: string
   ) => {
     try {
       const client = await initClient(userAddr);
@@ -592,15 +591,9 @@ export function usePaymentClient() {
         }
       }
       
-      // Properly pass tip amount to the client's makePayment method
-      // The Payment Client expects the tip amount as the third parameter
-      if (tipAmount && tipAmount > 0) {
-        console.log(`Processing payment with tip: ${tipAmount.toString()}`);
-        client.makePayment(tx, paymentId, tipAmount);
-      } else {
-        console.log('Processing payment without tip');
-        client.makePayment(tx, paymentId);
-      }
+      // Process the payment without tip (tip is handled separately at transaction level)
+      console.log('Processing payment for original amount only');
+      client.makePayment(tx, paymentId);
     } catch (error) {
       console.error("Error making payment:", error);
       throw error;
