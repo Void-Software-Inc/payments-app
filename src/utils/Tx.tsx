@@ -70,55 +70,43 @@ export const signAndExecute = async ({
   toast,
   optimizeLatency = false,
 }: any) => {
-  try {
-    // Step 1: Sign the transaction
-    const { signature, bytes } = await signTransaction({
-      currentAccount,
-      tx,
-      signTransaction: signTx,
-    });
+  // Step 1: Sign the transaction
+  const { signature, bytes } = await signTransaction({
+    currentAccount,
+    tx,
+    signTransaction: signTx,
+  });
 
-    // Step 2: Perform a dry run
-    const { digest: dryRunDigest } = await dryRunTransaction({
-      suiClient,
-      bytes,
-      signature,
-      toast,
-    });
+  // Step 2: Perform a dry run
+  const { digest: dryRunDigest } = await dryRunTransaction({
+    suiClient,
+    bytes,
+    signature,
+    toast,
+  });
 
-    // Step 3: Execute the transaction
-    // If optimizeLatency is true, don't show effects or events for faster confirmation
-    const executionOptions = optimizeLatency 
-      ? { showEffects: false, showEvents: false } 
-      : { ...options };
+  // Step 3: Execute the transaction
+  // If optimizeLatency is true, don't show effects or events for faster confirmation
+  const executionOptions = optimizeLatency 
+    ? { showEffects: false, showEvents: false } 
+    : { ...options };
 
-    const txResult = await executeTransaction({
-      suiClient,
-      bytes,
-      signature,
-      options: executionOptions,
-    });
+  const txResult = await executeTransaction({
+    suiClient,
+    bytes,
+    signature,
+    options: executionOptions,
+  });
 
-    // Verify that the dry run digest matches the actual transaction digest
-    console.log("Dry run digest:", dryRunDigest);
-    console.log("Actual digest:", txResult.digest);
-    console.log("Digests match:", dryRunDigest === txResult.digest);
+  // Verify that the dry run digest matches the actual transaction digest
+  console.log("Dry run digest:", dryRunDigest);
+  console.log("Actual digest:", txResult.digest);
+  console.log("Digests match:", dryRunDigest === txResult.digest);
 
-    return {
-      ...txResult,
-      dryRunDigest,
-    };
-  } catch (error) {
-    console.error("Error in signAndExecute:", {
-      error,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-      currentAccount: currentAccount?.address,
-      gasAmount: tx?.gasData?.budget,
-      optimizeLatency
-    });
-    throw error; // Re-throw the error to maintain existing error handling flow
-  }
+  return {
+    ...txResult,
+    dryRunDigest,
+  };
 };
 
 // Function to only sign and dry run without executing
@@ -165,17 +153,10 @@ export const handleTxResult = (finalTx: any, toast: any, isDryRun = false) => {
 
   const status = finalTx.effects?.status?.status;
   if (status !== "success") {
-    const errorMessage = `Transaction failed: ${finalTx.effects?.status?.error}`;
-    console.error("Transaction failure details:", {
-      digest: finalTx.digest,
-      status: finalTx.effects?.status,
-      effects: finalTx.effects,
-      fullTransaction: finalTx
-    });
     toast.error(
       <ToastNotification digest={finalTx.digest} />,
       {
-        description: errorMessage
+        description: `Transaction failed: ${finalTx.effects?.status?.error}`
       }
     );
   } else {
