@@ -102,7 +102,13 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
         setIsClientReady(true);
         
       } catch (error) {
-        console.error("Error fetching balance information:", error);
+        console.error("Error fetching balance information:", {
+          error,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          currentAddress: currentAccount?.address,
+          accountId,
+          coinType: USDC_COIN_TYPE
+        });
         setIsClientReady(false);
         // Retry after a delay
         setTimeout(fetchBalanceInfo, 1000);
@@ -265,6 +271,20 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
           lastError = initiateError;
           retryCount++;
           
+          // Log detailed retry error information
+          console.error(`Withdraw attempt ${retryCount} failed:`, {
+            error: initiateError,
+            errorMessage: initiateError instanceof Error ? initiateError.message : String(initiateError),
+            retryCount,
+            maxRetries,
+            willRetry: retryCount <= maxRetries,
+            currentAddress: currentAccount?.address,
+            accountId,
+            amount: amountBigInt.toString(),
+            recipient,
+            gasAmount: GAS_BUDGET.toString()
+          });
+          
           // If it's a user rejection, don't retry
           if (initiateError.message?.includes('User rejected')) {
             throw initiateError;
@@ -288,7 +308,23 @@ export function WithdrawForm({ accountId, isOwner }: WithdrawFormProps) {
       throw lastError;
       
     } catch (error: any) {
-      console.error("Error initiating withdraw:", error);
+      console.error("Error initiating withdraw:", {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        currentAddress: currentAccount?.address,
+        accountId,
+        amount: amount,
+        amountBigInt: amount ? BigInt(parseFloat(amount) * 1_000_000).toString() : 'N/A',
+        recipient,
+        balanceInfo: {
+          total: balanceInfo.total.toString(),
+          locked: balanceInfo.locked.toString(),
+          available: balanceInfo.available.toString()
+        },
+        isClientReady,
+        gasAmount: GAS_BUDGET.toString()
+      });
       
       // Handle user rejection of transaction
       if (error.message?.includes('User rejected')) {
