@@ -117,13 +117,68 @@ export default function PayPage() {
       // Set the sender address to resolve CoinWithBalance
       tx.setSender(currentAccount.address)
       
-      // Call makePayment
+      // Call makePayment for the original amount (without tip)
       await makePayment(
         currentAccount.address,
         tx,
-        sanitizedPaymentId,
-        tip
+        sanitizedPaymentId
       )
+      
+      // If there's a tip, add a separate USDC transfer
+      if (tip && tip > 0 && issuedBy) {
+        console.log(`Adding separate tip transfer of ${tip.toString()} to ${issuedBy}`);
+        
+        // Get USDC coins owned by the user
+        const usdcCoins = await suiClient.getCoins({
+          owner: currentAccount.address,
+          coinType: USDC_COIN_TYPE,
+        });
+        
+        if (usdcCoins.data.length === 0) {
+          throw new Error("No USDC coins available for tip");
+        }
+        
+        // Find a coin with sufficient balance or merge coins if needed
+        let tipCoinRef = null;
+        let totalBalance = BigInt(0);
+        
+        for (const coin of usdcCoins.data) {
+          totalBalance += BigInt(coin.balance);
+          if (BigInt(coin.balance) >= tip) {
+            tipCoinRef = coin.coinObjectId;
+            break;
+          }
+        }
+        
+        if (totalBalance < tip) {
+          throw new Error("Insufficient USDC balance for tip");
+        }
+        
+        // If we need to merge coins or split a coin
+        if (tipCoinRef) {
+          // Split the coin to get the exact tip amount
+          const [tipCoin] = tx.splitCoins(tx.object(tipCoinRef), [tip]);
+          
+          // Transfer the tip to the payment creator
+          const targetAddress = issuedBy.startsWith('0x') ? issuedBy : `0x${issuedBy}`;
+          tx.transferObjects([tipCoin], targetAddress);
+        } else {
+          // Need to merge multiple coins first
+          const primaryCoin = usdcCoins.data[0];
+          const coinsToMerge = usdcCoins.data.slice(1).map(coin => tx.object(coin.coinObjectId));
+          
+          if (coinsToMerge.length > 0) {
+            tx.mergeCoins(tx.object(primaryCoin.coinObjectId), coinsToMerge);
+          }
+          
+          // Split for the tip amount
+          const [tipCoin] = tx.splitCoins(tx.object(primaryCoin.coinObjectId), [tip]);
+          
+          // Transfer the tip to the payment creator
+          const targetAddress = issuedBy.startsWith('0x') ? issuedBy : `0x${issuedBy}`;
+          tx.transferObjects([tipCoin], targetAddress);
+        }
+      }
       
       // Execute the transaction
       const txResult = await signAndExecute({
@@ -139,7 +194,7 @@ export default function PayPage() {
       // Store the intent before refreshing client
       if (intentDetails) {
         console.log("Storing intent before refresh:", sanitizedPaymentId);
-        await addCompletedIntent(intentDetails, sanitizedPaymentId, txResult.digest);
+        await addCompletedIntent(intentDetails, sanitizedPaymentId, txResult.digest, tip);
       }
       
       refreshClient();

@@ -9,7 +9,7 @@ interface UseCompletedIntentsReturn {
   completedIntents: CompletedIntent[]
   isLoading: boolean
   error: string | null
-  addCompletedIntent: (intent: Intent, paymentId: string, txHash?: string, displayData?: { amount: string, coinType: string, recipient?: string }) => Promise<void>
+  addCompletedIntent: (intent: Intent, paymentId: string, txHash?: string, tipAmount?: bigint, displayData?: { amount: string, coinType: string, recipient?: string }) => Promise<void>
   getCompletedIntent: (paymentId: string) => CompletedIntent | undefined
   refreshIntents: () => Promise<void>
 }
@@ -143,7 +143,7 @@ export function useCompletedIntents(merchantId?: string): UseCompletedIntentsRet
     }
   }
 
-  const addCompletedIntent = useCallback(async (intent: Intent, paymentId: string, txHash?: string, displayData?: { amount: string, coinType: string, recipient?: string }) => {
+  const addCompletedIntent = useCallback(async (intent: Intent, paymentId: string, txHash?: string, tipAmount?: bigint, displayData?: { amount: string, coinType: string, recipient?: string }) => {
     if (!currentAccount?.address) {
       throw new Error('No wallet connected')
     }
@@ -189,7 +189,7 @@ export function useCompletedIntents(merchantId?: string): UseCompletedIntentsRet
           description: intent.fields?.description || '',
           sender: intent.fields?.creator || currentAccount.address,
           recipient: intent.account,
-          tipAmount: (intent.args as any)?.tip?.toString() || '0',
+          tipAmount: tipAmount ? tipAmount.toString() : '0',
           txHash,
         }
       }

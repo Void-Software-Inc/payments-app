@@ -366,6 +366,23 @@ export function PayCard({ onMakePayment, isProcessing }: PayCardProps) {
                 </div>
               </div>
               
+              {/* Total Amount Display (show when tip is added) */}
+              {paymentAmount && parseFloat(tipAmount) > 0 && (
+                <div className="space-y-2 mt-4">
+                  <Label className="text-md text-[#c8c8c8] font-medium">
+                    Total Amount
+                  </Label>
+                  <div className="flex items-center justify-between p-4 bg-[#1F1F23] rounded-lg border-2 border-[#78BCDB]">
+                    <span className="text-xl font-semibold text-white">
+                      ${(parseFloat(paymentAmount) + parseFloat(tipAmount)).toFixed(2)} USDC
+                    </span>
+                    <span className="text-sm text-[#c8c8c8]">
+                      (${paymentAmount} + ${parseFloat(tipAmount).toFixed(2)} tip)
+                    </span>
+                  </div>
+                </div>
+              )}
+              
               {/* Pay Button */}
               <Button
                 onClick={handlePay}
