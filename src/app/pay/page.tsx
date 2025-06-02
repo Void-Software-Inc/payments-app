@@ -50,6 +50,11 @@ export default function PayPage() {
     try {
       setIsProcessing(true)
       
+      // Inform user about multiple transactions if tip is included
+      if (tip > 0) {
+        toast.info("You'll need to approve 2 transactions: one for the payment and one for the tip.");
+      }
+      
       // Ensure paymentId is properly sanitized
       const sanitizedPaymentId = paymentId.trim();
       
@@ -98,89 +103,61 @@ export default function PayPage() {
       console.log("Intent details:", intentDetails);
       console.log("Intent fields:", intentDetails.fields);
       
-      // Access description from fields.description which is how it's structured in the Intent
-      const intentDescription = intentDetails.fields?.description || '';
+      // Get payment amount from intent
+      const intentFields = intentDetails.fields || {};
+      const intentArgs = intentDetails.args || {};
       
-      // Cast intent to access creator property via type assertion
-      const intentFields = intentDetails.fields as any;
-      const coinType = intentFields?.coinType || USDC_COIN_TYPE;
+      const paymentAmount = 
+        (intentArgs as any)?.amount?.toString() || 
+        (intentFields as any)?.amount?.toString() || 
+        ((intentDetails as any)?.args?.amount?.toString()) || 
+        ((intentDetails as any)?.fields?.amount?.toString()) || 
+        '0';
+      
+      // Validate total balance (payment + tip) BEFORE processing
+      if (tip > 0) {
+        console.log(`Validating balance for payment: ${paymentAmount} + tip: ${tip.toString()}`);
+        
+        // Get current USDC balance
+        const usdcBalance = await suiClient.getBalance({
+          owner: currentAccount.address,
+          coinType: USDC_COIN_TYPE,
+        });
+        
+        const totalBalanceRequired = BigInt(paymentAmount) + tip;
+        const availableBalance = BigInt(usdcBalance.totalBalance);
+        
+        console.log(`Total required: ${totalBalanceRequired.toString()}, Available: ${availableBalance.toString()}`);
+        
+        if (availableBalance < totalBalanceRequired) {
+          const requiredUSDC = Number(totalBalanceRequired) / 1_000_000;
+          const availableUSDC = Number(availableBalance) / 1_000_000;
+          toast.error(`Insufficient USDC balance. Required: $${requiredUSDC.toFixed(2)}, Available: $${availableUSDC.toFixed(2)}`);
+          setIsProcessing(false);
+          return;
+        }
+      }
       
       // Get issuedBy from the correct fields: account is the primary source for issuedBy
       let issuedBy = intentDetails.account || 
                      (intentDetails as any).accountId ||
-                     intentFields?.issuedBy || 
+                     (intentArgs as any)?.issuedBy || 
                      (paymentId.length >= 66 ? paymentId.substring(0, 66) : '');
       
-      // Create a new transaction
+      // Create a transaction for the payment only (no tip in this transaction)
       const tx = new Transaction()
       
       // Set the sender address to resolve CoinWithBalance
       tx.setSender(currentAccount.address)
       
-      // Call makePayment for the original amount (without tip)
+      // Call makePayment for the original amount only
       await makePayment(
         currentAccount.address,
         tx,
         sanitizedPaymentId
       )
       
-      // If there's a tip, add a separate USDC transfer
-      if (tip && tip > 0 && issuedBy) {
-        console.log(`Adding separate tip transfer of ${tip.toString()} to ${issuedBy}`);
-        
-        // Get USDC coins owned by the user
-        const usdcCoins = await suiClient.getCoins({
-          owner: currentAccount.address,
-          coinType: USDC_COIN_TYPE,
-        });
-        
-        if (usdcCoins.data.length === 0) {
-          throw new Error("No USDC coins available for tip");
-        }
-        
-        // Find a coin with sufficient balance or merge coins if needed
-        let tipCoinRef = null;
-        let totalBalance = BigInt(0);
-        
-        for (const coin of usdcCoins.data) {
-          totalBalance += BigInt(coin.balance);
-          if (BigInt(coin.balance) >= tip) {
-            tipCoinRef = coin.coinObjectId;
-            break;
-          }
-        }
-        
-        if (totalBalance < tip) {
-          throw new Error("Insufficient USDC balance for tip");
-        }
-        
-        // If we need to merge coins or split a coin
-        if (tipCoinRef) {
-          // Split the coin to get the exact tip amount
-          const [tipCoin] = tx.splitCoins(tx.object(tipCoinRef), [tip]);
-          
-          // Transfer the tip to the payment creator
-          const targetAddress = issuedBy.startsWith('0x') ? issuedBy : `0x${issuedBy}`;
-          tx.transferObjects([tipCoin], targetAddress);
-        } else {
-          // Need to merge multiple coins first
-          const primaryCoin = usdcCoins.data[0];
-          const coinsToMerge = usdcCoins.data.slice(1).map(coin => tx.object(coin.coinObjectId));
-          
-          if (coinsToMerge.length > 0) {
-            tx.mergeCoins(tx.object(primaryCoin.coinObjectId), coinsToMerge);
-          }
-          
-          // Split for the tip amount
-          const [tipCoin] = tx.splitCoins(tx.object(primaryCoin.coinObjectId), [tip]);
-          
-          // Transfer the tip to the payment creator
-          const targetAddress = issuedBy.startsWith('0x') ? issuedBy : `0x${issuedBy}`;
-          tx.transferObjects([tipCoin], targetAddress);
-        }
-      }
-      
-      // Execute the transaction
+      // Execute the payment transaction
       const txResult = await signAndExecute({
         suiClient,
         currentAccount,
@@ -191,6 +168,47 @@ export default function PayPage() {
       
       handleTxResult(txResult, toast);
 
+      // If there's a tip, handle it in a separate transaction immediately after
+      if (tip && tip > 0 && issuedBy) {
+        console.log(`Processing tip transfer of ${tip.toString()} to ${issuedBy} in separate transaction`);
+        
+        try {
+          const tipTx = new Transaction()
+          tipTx.setSender(currentAccount.address)
+          
+          const targetAddress = issuedBy.startsWith('0x') ? issuedBy : `0x${issuedBy}`;
+          
+          // Get fresh USDC coins for tip (after payment is completed)
+          const usdcCoins = await suiClient.getCoins({
+            owner: currentAccount.address,
+            coinType: USDC_COIN_TYPE,
+          });
+          
+          if (usdcCoins.data.length > 0 && BigInt(usdcCoins.data[0].balance) >= tip) {
+            const [tipCoin] = tipTx.splitCoins(tipTx.object(usdcCoins.data[0].coinObjectId), [tip]);
+            tipTx.transferObjects([tipCoin], targetAddress);
+            
+            // Execute tip transaction
+            const tipTxResult = await signAndExecute({
+              suiClient,
+              currentAccount,
+              tx: tipTx,
+              signTransaction,
+              toast
+            })
+            
+            handleTxResult(tipTxResult, toast);
+            console.log("Tip transaction completed successfully");
+          } else {
+            console.warn("Insufficient USDC balance for tip after payment");
+            toast.warning("Payment completed, but insufficient balance for tip");
+          }
+        } catch (tipError) {
+          console.error("Error processing tip:", tipError);
+          toast.warning("Payment completed successfully, but tip transfer failed");
+        }
+      }
+      
       // Store the intent before refreshing client
       if (intentDetails) {
         console.log("Storing intent before refresh:", sanitizedPaymentId);
