@@ -20,6 +20,7 @@ export function CreatePaymentForm() {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isClientReady, setIsClientReady] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   
   const { refreshClient } = usePaymentStore()
   const { createPaymentAccount, getUser } = usePaymentClient()
@@ -31,15 +32,34 @@ export function CreatePaymentForm() {
   // Ensure payment client is initialized
   useEffect(() => {
     const checkClientReady = async () => {
-      try {
-        if (currentAccount?.address) {
+      if (!currentAccount?.address) {
+        setIsInitializing(false)
+        return
+      }
+
+      let retryCount = 0
+      const maxRetries = 5
+      
+      while (retryCount <= maxRetries) {
+        try {
           await getUser(currentAccount.address)
           setIsClientReady(true)
+          setIsInitializing(false)
+          return
+        } catch (err) {
+          retryCount++
+          console.log(`Payment client initialization attempt ${retryCount}/${maxRetries + 1}...`)
+          
+          if (retryCount > maxRetries) {
+            console.log("Payment client ready (new user or initialization complete)")
+            setIsClientReady(true)
+            setIsInitializing(false)
+            return
+          }
+          
+          // Exponential backoff: wait longer between retries
+          await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retryCount - 1), 5000)))
         }
-      } catch (err) {
-        console.log("Payment client initializing...")
-        // Wait and try again
-        setTimeout(checkClientReady, 1000)
       }
     }
     
@@ -58,6 +78,11 @@ export function CreatePaymentForm() {
       setError("Please connect your wallet")
       return
     }
+
+    if (!isClientReady) {
+      setError("Payment client is still initializing. Please wait a moment and try again.")
+      return
+    }
     
     try {
       setIsCreating(true)
@@ -66,7 +91,7 @@ export function CreatePaymentForm() {
       // Get current user to check if user has an ID
       let currentUser = null
       let retryCount = 0
-      const maxRetries = 2
+      const maxRetries = 3
       
       // Retry getUser if it fails initially
       while (retryCount <= maxRetries) {
@@ -76,7 +101,9 @@ export function CreatePaymentForm() {
         } catch (err) {
           retryCount++
           if (retryCount > maxRetries) {
-            throw new Error("Failed to retrieve user data. Please try again.")
+            // For new users, this is expected - continue with user creation
+            console.log("User not found - will create new user")
+            break
           }
           // Wait briefly before retrying
           await new Promise(resolve => setTimeout(resolve, 500))
@@ -133,12 +160,15 @@ export function CreatePaymentForm() {
       
     } catch (err) {
       console.error("Error creating payment account:", err)
-      setError(err instanceof Error ? err.message : "Failed to create payment account")
-      toast.error(err instanceof Error ? err.message : "Failed to create payment account")
+      const errorMessage = err instanceof Error ? err.message : "Failed to create payment account"
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsCreating(false)
     }
   }
+  
+  const isFormDisabled = isCreating || !currentAccount || !isClientReady || isInitializing
   
   return (
     <div className="h-full w-full flex flex-col items-center justify-center pt-24">
@@ -149,6 +179,12 @@ export function CreatePaymentForm() {
           </CardHeader>
           
           <CardContent>
+            {isInitializing && (
+              <div className="text-center text-[#B2B2B2] mb-4">
+                Initializing payment client...
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-[#B2B2B2]">Name</Label>
@@ -161,6 +197,7 @@ export function CreatePaymentForm() {
                   style={{ fontSize: '16px' }}
                   required
                   autoComplete="off"
+                  disabled={isFormDisabled}
                 />
               </div>
               
@@ -198,9 +235,14 @@ export function CreatePaymentForm() {
                 type="submit"
                 className="w-full text-md h-13 rounded-full font-medium mt-8"
                 style={{ backgroundColor: "#78BCDB", borderColor: "#78BCDB" }}
-                disabled={isCreating || !currentAccount}
+                disabled={isFormDisabled}
               >
-                {isCreating ? "Creating..." : "Create Account"}
+                {isInitializing 
+                  ? "Initializing..." 
+                  : isCreating 
+                    ? "Creating..." 
+                    : "Create Account"
+                }
               </Button>
             </form>
           </CardContent>
